@@ -1,0 +1,133 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}Upload Resumes — {{ app_name }}{% endblock %}
+
+{% block page_title %}Upload Resumes{% endblock %}
+{% block page_subtitle %}Upload PDF, Word, or Image resumes for parsing and screening{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<link href="{{ url_for('static', filename='css/upload.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Bulk Resume Upload</h3>
+            </div>
+            <div class="panel-body">
+                <form method="POST" action="{{ url_for('resumes.upload') }}" enctype="multipart/form-data" id="uploadForm">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.job_id.label(class="form-label") }}
+                        {{ form.job_id(class="form-select upload-select") }}
+                        <div class="form-text text-muted">
+                            Optionally link uploaded candidates to an open job posting.
+                        </div>
+                    </div>
+
+                    <div class="upload-dropzone" id="uploadDropzone">
+                        <input type="file" name="resumes" id="resumeFiles" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="d-none">
+                        <div class="upload-dropzone-content">
+                            <i class="bi bi-cloud-arrow-up upload-dropzone-icon"></i>
+                            <h4>Drag & drop resumes here</h4>
+                            <p>or <button type="button" class="btn btn-link upload-browse-btn" id="browseBtn">browse files</button></p>
+                            <span class="upload-hint">PDF, Word (.doc/.docx), Images (.jpg/.png) · Multiple files · Max 16 MB each</span>
+                        </div>
+                    </div>
+
+                    <div class="upload-file-list" id="fileList"></div>
+
+                    <div class="upload-actions mt-3">
+                        {{ form.submit(class="btn btn-primary upload-submit", id="uploadSubmit", disabled=True) }}
+                        <button type="button" class="btn btn-outline-secondary" id="clearFiles" disabled>Clear</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <h3 class="panel-title">What happens next</h3>
+            </div>
+            <div class="panel-body">
+                <ul class="upload-steps">
+                    <li>
+                        <span class="upload-step-num">1</span>
+                        <div>
+                            <strong>Text extraction</strong>
+                            <p>PDF, Word, and Image content is parsed automatically</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="upload-step-num">2</span>
+                        <div>
+                            <strong>Contact detection</strong>
+                            <p>Name, email, phone, LinkedIn &amp; GitHub are extracted</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="upload-step-num">3</span>
+                        <div>
+                            <strong>Candidate profile</strong>
+                            <p>A candidate record is created or updated</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="upload-step-num">4</span>
+                        <div>
+                            <strong>ATS scoring</strong>
+                            <p>Skills matched, scored & ranked automatically</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        {% if results %}
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Upload Results</h3>
+            </div>
+            <div class="panel-body p-0">
+                <ul class="upload-results-list">
+                    {% for result in results %}
+                    <li class="upload-result-item {{ 'success' if result.success else 'error' }}">
+                        <div class="upload-result-icon">
+                            <i class="bi {{ 'bi-check-circle-fill' if result.success else 'bi-x-circle-fill' }}"></i>
+                        </div>
+                        <div class="upload-result-body">
+                            <strong>{{ result.filename }}</strong>
+                            {% if result.success %}
+                                <span>{{ result.candidate_name }}{% if result.email %} · {{ result.email }}{% endif %}</span>
+                                <span class="upload-result-meta">
+                                    Parse: {{ result.parse_status }}
+                                    {% if result.text_length %} · {{ result.text_length }} chars{% endif %}
+                                    {% if result.skills %} · Skills: {{ result.skills | join(', ') }}{% endif %}
+                                    {% if result.ats_score is not none %} · ATS: {{ result.ats_score }}%{% endif %}
+                                    {% if result.rank %} · Rank #{{ result.rank }}{% endif %}
+                                    {% if result.warning %} · {{ result.warning }}{% endif %}
+                                </span>
+                            {% else %}
+                                <span class="text-danger">{{ result.error }}</span>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}

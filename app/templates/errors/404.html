@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}404 — {{ app_name }}{% endblock %}
+
+{% block body %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center bg-dark text-light">
+    <div class="text-center">
+        <h1 class="display-1 fw-bold">404</h1>
+        <p class="lead text-secondary">Page not found</p>
+        <a href="{{ url_for('main.index') }}" class="btn btn-primary">Go Home</a>
+    </div>
+</div>
+{% endblock %}

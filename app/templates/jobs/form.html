@@ -1,0 +1,170 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}{{ 'Edit Job' if job else 'New Job' }} — {{ app_name }}{% endblock %}
+
+{% block page_title %}{{ 'Edit Job' if job else 'Create New Job' }}{% endblock %}
+{% block page_subtitle %}{{ job.title if job else 'Define the role, skills, and criteria' }}{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+.template-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
+.template-chip {
+
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    background: var(--rs-bg-secondary);
+    border: 1px solid var(--rs-border);
+    color: var(--rs-text-muted);
+    font-size: 0.78rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.template-chip:hover {
+    background: var(--rs-accent);
+    border-color: var(--rs-accent);
+    color: #fff;
+    text-decoration: none;
+}
+.form-section { margin-bottom: 1.75rem; }
+.form-section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--rs-text-muted);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--rs-border);
+}
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="detail-back">
+    <a href="{{ url_for('main.jobs') }}" class="btn-back">
+        <i class="bi bi-arrow-left"></i> All Jobs
+    </a>
+</div>
+
+{% if not job %}
+<div class="panel mb-3">
+    <div class="panel-header">
+        <h3 class="panel-title"><i class="bi bi-lightning-fill me-1"></i> Quick Start — Select a Template</h3>
+    </div>
+    <div class="panel-body">
+        <p class="text-muted small mb-2">Click a template to pre-fill the form with common requirements:</p>
+        <div class="template-chips">
+            {% for name in templates %}
+            <a href="{{ url_for('main.job_new', template=name) }}" class="template-chip">{{ name }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="panel">
+    <div class="panel-header">
+        <h3 class="panel-title">{{ 'Edit Job Details' if job else 'Job Details' }}</h3>
+    </div>
+    <div class="panel-body">
+        <form method="POST" action="{{ url_for('main.job_edit', job_id=job.id) if job else url_for('main.job_new') }}" novalidate>
+            {{ form.hidden_tag() }}
+
+            <div class="row g-3">
+                <!-- Left column -->
+                <div class="col-lg-8">
+
+                    <div class="form-section">
+                        <div class="form-section-title">Basic Information</div>
+                        <div class="mb-3">
+                            {{ form.title.label(class="form-label") }}
+                            {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+                            {% for e in form.title.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                {{ form.department.label(class="form-label") }}
+                                {{ form.department(class="form-control") }}
+                            </div>
+                            <div class="col-sm-6">
+                                {{ form.location.label(class="form-label") }}
+                                {{ form.location(class="form-control") }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">ATS Criteria</div>
+                        <div class="mb-3">
+                            {{ form.required_skills_text.label(class="form-label") }}
+                            {{ form.required_skills_text(class="form-control") }}
+                            <div class="form-text">Comma-separated. Example: Python, Django, REST API, SQL</div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                {{ form.min_experience.label(class="form-label") }}
+                                {{ form.min_experience(class="form-control") }}
+                            </div>
+                            <div class="col-sm-6">
+                                {{ form.min_qualification.label(class="form-label") }}
+                                {{ form.min_qualification(class="form-select") }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Description & Requirements</div>
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.requirements.label(class="form-label") }}
+                            {{ form.requirements(class="form-control") }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right column: settings -->
+                <div class="col-lg-4">
+                    <div class="form-section">
+                        <div class="form-section-title">Settings</div>
+                        <div class="mb-3">
+                            {{ form.status.label(class="form-label") }}
+                            {{ form.status(class="form-select") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.employment_type.label(class="form-label") }}
+                            {{ form.employment_type(class="form-select") }}
+                        </div>
+                    </div>
+
+                    {% if job %}
+                    <div class="panel" style="background: var(--rs-bg-secondary);">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Danger Zone</h3>
+                        </div>
+                        <div class="panel-body">
+                            <p class="text-muted small">Deleting a job will remove all applicants linked to it.</p>
+                            <form method="POST" action="{{ url_for('main.job_delete', job_id=job.id) }}" onsubmit="return confirm('Delete this job and all its applications?');">
+                                {{ form.hidden_tag() }}
+                                <button type="submit" class="btn btn-sm btn-danger w-100">
+                                    <i class="bi bi-trash-fill"></i> Delete Job
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-2">
+                {{ form.submit(class="btn btn-primary") }}
+                <a href="{{ url_for('main.jobs') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

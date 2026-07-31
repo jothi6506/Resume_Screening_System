@@ -1,0 +1,28 @@
+# Core
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+WTForms==3.1.2
+email-validator==2.1.1
+
+# Database
+PyMySQL==1.1.1
+cryptography==42.0.8
+
+# Security
+Werkzeug==3.0.3
+python-dotenv==1.0.1
+
+# Resume processing
+PyPDF2==3.0.1
+pdfplumber
+python-docx
+docx2txt
+Pillow
+pytesseract
+
+# Utilities
+python-dateutil==2.9.0.post0
+phonenumbers

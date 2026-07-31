@@ -1,0 +1,206 @@
+/* Resume upload page */
+
+.upload-select {
+    background: var(--rs-bg);
+    border-color: var(--rs-border);
+    color: var(--rs-text);
+    max-width: 400px;
+}
+
+.upload-select:focus {
+    background: var(--rs-bg);
+    border-color: var(--rs-primary);
+    color: var(--rs-text);
+    box-shadow: 0 0 0 3px rgba(10, 102, 194, 0.2);
+}
+
+.upload-dropzone {
+    border: 2px dashed var(--rs-border);
+    border-radius: 12px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    background: var(--rs-bg);
+    transition: border-color 0.2s, background 0.2s;
+    cursor: pointer;
+}
+
+.upload-dropzone.dragover {
+    border-color: var(--rs-primary);
+    background: rgba(10, 102, 194, 0.08);
+}
+
+.upload-dropzone-icon {
+    font-size: 2.5rem;
+    color: var(--rs-info);
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
+.upload-dropzone h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--rs-text);
+    margin-bottom: 0.35rem;
+}
+
+.upload-dropzone p {
+    color: var(--rs-text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.upload-browse-btn {
+    padding: 0;
+    font-size: inherit;
+    vertical-align: baseline;
+}
+
+.upload-hint {
+    font-size: 0.78rem;
+    color: var(--rs-text-muted);
+}
+
+.upload-file-list {
+    margin-top: 1rem;
+}
+
+.upload-file-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    background: var(--rs-bg);
+    border: 1px solid var(--rs-border);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.upload-file-item i {
+    color: var(--rs-danger);
+    font-size: 1.25rem;
+}
+
+.upload-file-item .file-name {
+    flex: 1;
+    font-size: 0.85rem;
+    color: var(--rs-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.upload-file-item .file-size {
+    font-size: 0.75rem;
+    color: var(--rs-text-muted);
+}
+
+.upload-file-item .file-remove {
+    background: none;
+    border: none;
+    color: var(--rs-text-muted);
+    padding: 0.2rem;
+    cursor: pointer;
+}
+
+.upload-file-item .file-remove:hover {
+    color: var(--rs-danger);
+}
+
+.upload-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.upload-submit:disabled {
+    opacity: 0.5;
+}
+
+.upload-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.upload-steps li {
+    display: flex;
+    gap: 0.85rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--rs-border);
+}
+
+.upload-steps li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.upload-step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--rs-primary-light);
+    color: var(--rs-info);
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.upload-steps strong {
+    display: block;
+    font-size: 0.88rem;
+    color: var(--rs-text);
+}
+
+.upload-steps p {
+    font-size: 0.78rem;
+    color: var(--rs-text-muted);
+    margin: 0.15rem 0 0;
+}
+
+.upload-results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.upload-result-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--rs-border);
+}
+
+.upload-result-item:last-child {
+    border-bottom: none;
+}
+
+.upload-result-item.success .upload-result-icon {
+    color: var(--rs-success);
+}
+
+.upload-result-item.error .upload-result-icon {
+    color: var(--rs-danger);
+}
+
+.upload-result-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.upload-result-body strong {
+    font-size: 0.85rem;
+    color: var(--rs-text);
+}
+
+.upload-result-body span {
+    font-size: 0.78rem;
+    color: var(--rs-text-muted);
+}
+
+.upload-result-meta {
+    font-size: 0.72rem !important;
+}

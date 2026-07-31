@@ -1,0 +1,127 @@
+{% extends "layouts/dashboard.html" %}
+{% from "partials/_stat_card.html" import stat_card %}
+
+{% block title %}Dashboard — {{ app_name }}{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Overview of your hiring pipeline{% endblock %}
+
+{% block dashboard_content %}
+<!-- Row 1: Candidate & Resume stats -->
+<div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+    {{ stat_card("Total Candidates", stats.total_candidates, "bi-people-fill", "primary", url=url_for('main.candidates'), id_suffix='total_candidates') }}
+    {{ stat_card("Total Applicants", stats.total_applicants, "bi-person-lines-fill", "info", url=url_for('main.candidates', status='all'), id_suffix='total_applicants') }}
+    {{ stat_card("Shortlisted", stats.shortlisted, "bi-star-fill", "success", url=url_for('main.candidates', status='shortlisted'), id_suffix='shortlisted') }}
+    {{ stat_card("Rejected", stats.rejected, "bi-x-circle-fill", "warning", url=url_for('main.candidates', status='rejected'), id_suffix='rejected') }}
+</div>
+<!-- Row 2: Job & Authenticity stats -->
+<div class="stats-grid mt-3" style="grid-template-columns: repeat(4, 1fr);">
+    {{ stat_card("Total Jobs", stats.total_jobs, "bi-briefcase-fill", "primary", url=url_for('main.jobs'), id_suffix='total_jobs') }}
+    {{ stat_card("Active Jobs", stats.active_jobs, "bi-check-circle-fill", "success", url=url_for('main.jobs', status='open'), id_suffix='active_jobs') }}
+    {{ stat_card("Draft / Closed", stats.draft_jobs ~ " / " ~ stats.closed_jobs, "bi-hourglass-split", "warning", url=url_for('main.jobs', status='draft'), id_suffix='draft_closed_jobs') }}
+    {{ stat_card("Suspicious Resumes", stats.suspicious_resumes, "bi-shield-exclamation", "danger" if stats.suspicious_resumes > 0 else "info", url=url_for('main.candidates', status='suspicious'), id_suffix='suspicious_resumes') }}
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <h3 class="panel-title">Hiring Pipeline</h3>
+            </div>
+            <div class="panel-body">
+                <div class="pipeline-grid">
+                    <a href="{{ url_for('main.candidates', status='new') }}" class="pipeline-stage stage-new" style="text-decoration: none; color: inherit;">
+                        <span class="pipeline-count" id="pipe_new">{{ stats.pipeline.new }}</span>
+                        <span class="pipeline-label">New</span>
+                    </a>
+                    <a href="{{ url_for('main.candidates', status='reviewing') }}" class="pipeline-stage stage-reviewing" style="text-decoration: none; color: inherit;">
+                        <span class="pipeline-count" id="pipe_reviewing">{{ stats.pipeline.reviewing }}</span>
+                        <span class="pipeline-label">Reviewing</span>
+                    </a>
+                    <a href="{{ url_for('main.candidates', status='shortlisted') }}" class="pipeline-stage stage-shortlisted" style="text-decoration: none; color: inherit;">
+                        <span class="pipeline-count" id="pipe_shortlisted">{{ stats.pipeline.shortlisted }}</span>
+                        <span class="pipeline-label">Shortlisted</span>
+                    </a>
+                    <a href="{{ url_for('main.candidates', status='rejected') }}" class="pipeline-stage stage-rejected" style="text-decoration: none; color: inherit;">
+                        <span class="pipeline-count" id="pipe_rejected">{{ stats.pipeline.rejected }}</span>
+                        <span class="pipeline-label">Rejected</span>
+                    </a>
+                    <a href="{{ url_for('main.candidates', status='hired') }}" class="pipeline-stage stage-hired" style="text-decoration: none; color: inherit;">
+                        <span class="pipeline-count" id="pipe_hired">{{ stats.pipeline.hired }}</span>
+                        <span class="pipeline-label">Hired</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Open Positions</h3>
+                <a href="{{ url_for('main.jobs') }}" class="panel-link">View all</a>
+            </div>
+            <div class="panel-body">
+                {% if stats.recent_jobs %}
+                    {% for job in stats.recent_jobs %}
+                    <div class="job-list-item">
+                        <div>
+                            <p class="job-list-title">{{ job.title }}</p>
+                            <span class="job-list-meta">
+                                {{ job.department or "General" }}
+                                {% if job.location %} · {{ job.location }}{% endif %}
+                            </span>
+                        </div>
+                        <span class="job-list-badge">{{ job.application_count }} applicants</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="bi bi-briefcase d-block"></i>
+                        <p>No open jobs yet. A sample job is created when you run <code>flask seed</code>.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <h3 class="panel-title">Quick Actions</h3>
+            </div>
+            <div class="panel-body">
+                <div class="quick-actions">
+                    <a href="{{ url_for('resumes.upload') }}" class="quick-action-btn">
+                        <i class="bi bi-cloud-upload-fill"></i>
+                        Upload Resumes
+                    </a>
+                    <a href="{{ url_for('main.job_new') }}" class="quick-action-btn">
+                        <i class="bi bi-briefcase-fill"></i>
+                        Create Job
+                    </a>
+                    <a href="{{ url_for('main.candidates') }}" class="quick-action-btn">
+                        <i class="bi bi-people-fill"></i>
+                        Candidates
+                    </a>
+                    <a href="{{ url_for('main.jobs') }}" class="quick-action-btn">
+                        <i class="bi bi-briefcase"></i>
+                        Jobs
+                    </a>
+                    <a href="{{ url_for('main.analytics') }}" class="quick-action-btn">
+                        <i class="bi bi-bar-chart-fill"></i>
+                        Analytics
+                    </a>
+                    <a href="{{ url_for('main.email_history') }}" class="quick-action-btn">
+                        <i class="bi bi-envelope-paper-fill"></i>
+                        Email History
+                    </a>
+                    <a href="{{ url_for('main.email_settings') }}" class="quick-action-btn">
+                        <i class="bi bi-gear-fill"></i>
+                        Email Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

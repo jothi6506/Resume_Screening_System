@@ -1,0 +1,24 @@
+{% macro stat_card(title, value, icon, color="primary", url=None, change=None, change_label="", id_suffix="") %}
+{% if url %}
+<a href="{{ url }}" class="stat-card stat-card-{{ color }}" style="text-decoration: none; color: inherit; display: block; transition: transform 0.2s, box-shadow 0.2s;">
+{% else %}
+<div class="stat-card stat-card-{{ color }}">
+{% endif %}
+    <div class="stat-card-body">
+        <div class="stat-card-icon">
+            <i class="bi {{ icon }}"></i>
+        </div>
+        <div class="stat-card-content">
+            <span class="stat-card-label">{{ title }}</span>
+            <span class="stat-card-value" id="stat_{{ id_suffix }}">{{ value }}</span>
+            {% if change is not none %}
+            <span class="stat-card-change">{{ change }} {{ change_label }}</span>
+            {% endif %}
+        </div>
+    </div>
+{% if url %}
+</a>
+{% else %}
+</div>
+{% endif %}
+{% endmacro %}

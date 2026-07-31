@@ -1,0 +1,195 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}Candidates — {{ app_name }}{% endblock %}
+
+{% block page_title %}Candidates{% endblock %}
+{% block page_subtitle %}Browse and manage all applicants{% endblock %}
+
+{% block dashboard_content %}
+<div class="candidates-toolbar">
+    <form method="GET" action="{{ url_for('main.candidates') }}" class="candidates-search-form">
+        <div class="search-input-wrapper">
+            <i class="bi bi-search"></i>
+            <input type="text" name="q" class="form-control" placeholder="Search by name, email, or title…"
+                   value="{{ search_query }}" id="candidateSearch">
+        </div>
+        {% if status_filter != 'all' %}
+        <input type="hidden" name="status" value="{{ status_filter }}">
+        {% endif %}
+    </form>
+
+    <div class="status-filter-pills">
+        {% set statuses = [('all', 'All'), ('new', 'New'), ('reviewing', 'Reviewing'), ('shortlisted', 'Shortlisted'), ('rejected', 'Rejected'), ('hired', 'Hired')] %}
+        {% for val, label in statuses %}
+        <a href="{{ url_for('main.candidates', status=val, q=search_query) }}"
+           class="filter-pill {{ 'active' if status_filter == val }}">
+            {{ label }}
+            <span class="filter-count">{{ status_counts.get(val, 0) }}</span>
+        </a>
+        {% endfor %}
+        {# Suspicious tab — shown always, highlighted in danger color #}
+        <a href="{{ url_for('main.candidates', status='suspicious', q=search_query) }}"
+           class="filter-pill filter-pill-suspicious {{ 'active' if status_filter == 'suspicious' }}"
+           title="Candidates with at least one suspicious resume">
+            <i class="bi bi-shield-exclamation"></i> Suspicious
+            <span class="filter-count">{{ status_counts.get('suspicious', 0) }}</span>
+        </a>
+    </div>
+
+</div>
+
+{% if applications %}
+<div class="panel">
+    <div class="panel-body p-0">
+        <div class="table-responsive">
+            <table class="table candidates-table" id="candidatesTable">
+                <thead>
+                    <tr>
+                        <th>Candidate</th>
+                        <th>Applied Job</th>
+                        <th>Status</th>
+                        <th>ATS Score</th>
+                        <th>Rank</th>
+                        <th>Skills</th>
+                        <th>Suspicious Flag</th>
+                        <th>Added</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    {% set c = app.candidate %}
+                    {% set resume = c.primary_resume %}
+                    {% set auth_report = resume.authenticity_report_dict if resume else {} %}
+                    {% set failed_rules = auth_report.get('failed_validations', []) if auth_report else [] %}
+                    <tr class="candidate-row" onclick="window.location='{{ url_for('main.candidate_detail', candidate_id=c.id) }}'">
+                        <td>
+                            <div class="candidate-cell">
+                                <div class="candidate-avatar">{{ c.full_name[0] | upper }}</div>
+                                <div>
+                                    <span class="candidate-name">{{ c.full_name }}</span>
+                                    <span class="candidate-email">{{ c.email or '—' }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <strong>{{ app.job.title }}</strong>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('main.candidates', status=app.status) }}" class="status-badge status-{{ app.status }}" style="text-decoration: none;">
+                                {{ app.status | capitalize }}
+                            </a>
+                        </td>
+                        <td>
+                            {% set score = app.ats_score %}
+                            {% if score is not none %}
+                            <div class="ats-score-cell">
+                                <div class="ats-mini-bar">
+                                    <div class="ats-mini-fill {% if score >= 70 %}high{% elif score >= 40 %}mid{% else %}low{% endif %}"
+                                         style="width: {{ score }}%"></div>
+                                </div>
+                                <span class="ats-value">{{ score | round(1) }}%</span>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if app.rank %}
+                            <span class="badge" style="background-color: var(--rs-border, #30363d); color: var(--rs-text); border: 1px solid var(--rs-border);">#{{ app.rank }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="skills-count">{{ c.skills | length }}</span>
+                        </td>
+
+                        {# ── Suspicious Flag column ─────────────────────────── #}
+                        <td class="suspicious-flag-cell">
+                            {% if resume %}
+                                {% set classification = auth_report.get('classification', 'Unknown') %}
+                                
+                                {% if classification == 'Genuine' %}
+                                    <span class="badge bg-success" style="cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 50rem;" 
+                                          data-bs-toggle="popover" data-bs-trigger="focus hover" tabindex="0" 
+                                          title="Genuine" 
+                                          data-bs-content="No suspicious indicators detected.">
+                                        <i class="bi bi-shield-check me-1"></i> Genuine
+                                    </span>
+                                {% elif classification == 'Needs Review' %}
+                                    {% set popover_html = "<ul class='mb-0 ps-3' style='font-size:0.85rem; text-align:left;'>" %}
+                                    {% for rule in failed_rules %}
+                                        {% set popover_html = popover_html ~ "<li>" ~ rule.detail|e ~ "</li>" %}
+                                    {% endfor %}
+                                    {% set popover_html = popover_html ~ "</ul>" %}
+                                    
+                                    <span class="badge bg-warning text-dark" style="cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 50rem;" 
+                                          data-bs-toggle="popover" data-bs-trigger="focus hover" tabindex="0" data-bs-html="true"
+                                          title="Reasons:" 
+                                          data-bs-content="{{ popover_html }}">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i> Needs Review
+                                    </span>
+                                {% elif classification == 'Suspicious' %}
+                                    {% set popover_html = "<ul class='mb-0 ps-3' style='font-size:0.85rem; text-align:left;'>" %}
+                                    {% for rule in failed_rules %}
+                                        {% set popover_html = popover_html ~ "<li>" ~ rule.detail|e ~ "</li>" %}
+                                    {% endfor %}
+                                    {% set popover_html = popover_html ~ "</ul>" %}
+                                    
+                                    <span class="badge bg-danger" style="cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 50rem;" 
+                                          data-bs-toggle="popover" data-bs-trigger="focus hover" tabindex="0" data-bs-html="true"
+                                          title="Reasons:" 
+                                          data-bs-content="{{ popover_html }}">
+                                        <i class="bi bi-shield-exclamation me-1"></i> Suspicious
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <span class="text-muted small">{{ app.applied_at.strftime('%b %d, %Y') if app.applied_at else '—' }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('main.candidate_detail', candidate_id=c.id) }}" class="btn-view">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="panel">
+    <div class="panel-body">
+        <div class="empty-state">
+            <i class="bi bi-people d-block"></i>
+            <p>No candidates found{% if search_query %} matching "<strong>{{ search_query }}</strong>"{% endif %}{% if status_filter != 'all' %} with status <strong>{{ status_filter }}</strong>{% endif %}.</p>
+            <a href="{{ url_for('resumes.upload') }}" class="btn btn-primary btn-sm mt-2">
+                <i class="bi bi-cloud-upload me-1"></i> Upload Resumes
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl)
+    })
+});
+</script>
+{% endblock %}

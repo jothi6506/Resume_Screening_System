@@ -1,0 +1,227 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}{{ job.title }} — {{ app_name }}{% endblock %}
+
+{% block page_title %}{{ job.title }}{% endblock %}
+{% block page_subtitle %}Job Details{% endblock %}
+
+{% block dashboard_content %}
+<div class="detail-back" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem;">
+    <a href="{{ url_for('main.jobs') }}" class="btn-back">
+        <i class="bi bi-arrow-left"></i> All Jobs
+    </a>
+    <div class="ms-auto d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('main.job_edit', job_id=job.id) }}" class="btn btn-sm btn-secondary">
+            <i class="bi bi-pencil-fill"></i> Edit Job
+        </a>
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-arrow-repeat"></i> Change Status
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                {% for val, label in [('open','Active / Open'),('draft','Draft'),('closed','Closed'),('archived','Archived')] %}
+                <li>
+                    <form method="POST" action="{{ url_for('main.job_update_status', job_id=job.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="status" value="{{ val }}">
+                        <button type="submit" class="dropdown-item {% if job.status == val %}fw-bold{% endif %}">
+                            {{ label }} {% if job.status == val %}<i class="bi bi-check2"></i>{% endif %}
+                        </button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <a href="{{ url_for('resumes.upload') }}" class="btn btn-sm btn-primary">
+            <i class="bi bi-cloud-upload"></i> Upload Resumes
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Left column: Job info -->
+    <div class="col-lg-4">
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <h3 class="panel-title">Overview</h3>
+                <span class="status-badge status-{{ job.status }}">{{ job.status | capitalize }}</span>
+            </div>
+            <div class="panel-body">
+                <ul class="profile-info-list">
+                    <li>
+                        <i class="bi bi-building"></i>
+                        <span>{{ job.department or 'General' }}</span>
+                    </li>
+                    <li>
+                        <i class="bi bi-geo-alt"></i>
+                        <span>{{ job.location or 'Not specified' }}</span>
+                    </li>
+                    <li>
+                        <i class="bi bi-clock"></i>
+                        <span>{{ job.employment_type | capitalize }}</span>
+                    </li>
+                    <li>
+                        <i class="bi bi-people"></i>
+                        <span>{{ job.application_count }} applicant{{ 's' if job.application_count != 1 }}</span>
+                    </li>
+                    {% if job.created_at %}
+                    <li>
+                        <i class="bi bi-calendar3"></i>
+                        <span>Posted {{ job.created_at.strftime('%b %d, %Y') }}</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Required Skills -->
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <h3 class="panel-title">Required Skills</h3>
+                <span class="badge-count">{{ job.required_skills | length }}</span>
+            </div>
+            <div class="panel-body">
+                {% if job.required_skills %}
+                <div class="skills-grid">
+                    {% for js in job.required_skills %}
+                    <span class="skill-tag {% if js.is_required %}required{% endif %}">
+                        {{ js.skill.name }}
+                        <span class="skill-weight">×{{ js.weight }}</span>
+                    </span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state small">
+                    <p class="text-muted">No required skills defined.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if job.description %}
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <h3 class="panel-title">Description</h3>
+            </div>
+            <div class="panel-body">
+                <p class="text-muted mb-0" style="line-height: 1.7; white-space: pre-line;">{{ job.description }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if job.requirements %}
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Requirements</h3>
+            </div>
+            <div class="panel-body">
+                <p class="text-muted mb-0" style="line-height: 1.7; white-space: pre-line;">{{ job.requirements }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right column: Ranked applicants -->
+    <div class="col-lg-8">
+        <div class="panel">
+            <div class="panel-header flex-column align-items-start gap-3">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <h3 class="panel-title mb-0">Ranked Applicants</h3>
+                    <span class="badge-count">{{ applications | length }}</span>
+                </div>
+                
+                <div class="status-filter-pills" style="margin-bottom: 0;">
+                    {% set statuses = [('all', 'All'), ('new', 'New'), ('reviewing', 'Reviewing'), ('shortlisted', 'Shortlisted'), ('rejected', 'Rejected'), ('hired', 'Hired')] %}
+                    {% for val, label in statuses %}
+                    <a href="{{ url_for('main.job_detail', job_id=job.id, status=val) }}"
+                       class="filter-pill {{ 'active' if status_filter == val }}" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+                        {{ label }}
+                        <span class="filter-count">{{ status_counts.get(val, 0) }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="panel-body p-0">
+                {% if applications %}
+                <div class="table-responsive">
+                    <table class="table candidates-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Candidate</th>
+                                <th>ATS Score</th>
+                                <th>Skill Match</th>
+                                <th>Experience</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for app in applications %}
+                            <tr class="candidate-row" onclick="window.location='{{ url_for('main.candidate_detail', candidate_id=app.candidate_id) }}'">
+                                <td>
+                                    {% if app.rank %}
+                                    <span class="rank-badge {% if app.rank <= 3 %}top{% endif %}">#{{ app.rank }}</span>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="candidate-cell">
+                                        <div class="candidate-avatar">{{ app.candidate.full_name[0] | upper }}</div>
+                                        <div>
+                                            <span class="candidate-name">{{ app.candidate.full_name }}</span>
+                                            <span class="candidate-email">{{ app.candidate.email or '' }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="ats-score-cell">
+                                        <div class="ats-mini-bar">
+                                            <div class="ats-mini-fill {% if app.ats_score >= 70 %}high{% elif app.ats_score >= 40 %}mid{% else %}low{% endif %}"
+                                                 style="width: {{ app.ats_score }}%"></div>
+                                        </div>
+                                        <span class="ats-value">{{ app.ats_score | round(1) }}%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% set sm = app.skill_match_score or 0.0 %}
+                                    <span class="badge" style="
+                                        {% if sm >= 90 %}background-color: var(--rs-success); color: white;
+                                        {% elif sm >= 75 %}background-color: #85e085; color: black;
+                                        {% elif sm >= 60 %}background-color: var(--rs-warning); color: black;
+                                        {% elif sm >= 40 %}background-color: #fd7e14; color: white;
+                                        {% else %}background-color: var(--rs-danger); color: white;{% endif %}
+                                    ">
+                                        {{ sm | round(1) }}%
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if app.candidate.years_experience is not none %}
+                                    {{ app.candidate.years_experience }} yrs
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('main.job_detail', job_id=job.id, status=app.candidate.status) }}" class="status-badge status-{{ app.candidate.status }}" style="text-decoration: none;">
+                                        {{ app.candidate.status | capitalize }}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="panel-body">
+                    <div class="empty-state small">
+                        <i class="bi bi-person-plus d-block"></i>
+                        <p>No applicants yet. <a href="{{ url_for('resumes.upload') }}">Upload resumes</a> linked to this job.</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

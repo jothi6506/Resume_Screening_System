@@ -1,0 +1,24 @@
+/* Main stylesheet — expanded in Step 4 (dark HR dashboard theme) */
+
+:root {
+    --rs-primary: #0a66c2;
+    --rs-bg: #0d1117;
+    --rs-surface: #161b22;
+    --rs-border: #30363d;
+    --rs-text: #e6edf3;
+    --rs-text-muted: #8b949e;
+}
+
+[data-bs-theme="light"] {
+    --rs-primary: #0a66c2;
+    --rs-bg: #f3f2ef;
+    --rs-surface: #ffffff;
+    --rs-border: #e0e0e0;
+    --rs-text: #191919;
+    --rs-text-muted: #666666;
+}
+
+body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background-color: var(--rs-bg);
+}

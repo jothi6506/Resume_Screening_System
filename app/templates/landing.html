@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome — {{ app_name }}{% endblock %}
+
+{% block body %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center bg-dark">
+    <div class="text-center text-light">
+        <h1 class="display-5 fw-bold">{{ app_name }}</h1>
+        <p class="lead text-secondary">AI-powered resume screening for modern HR teams</p>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg mt-3">Sign In</a>
+    </div>
+</div>
+{% endblock %}

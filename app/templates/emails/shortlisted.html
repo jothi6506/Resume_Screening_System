@@ -1,0 +1,11 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<p>We are pleased to inform you that your application for the 
+{% if job %}<strong>{{ job.title }}</strong>{% else %}position{% endif %} has been <strong>shortlisted</strong>.</p>
+
+<p>Your profile is very impressive, and we believe you could be a great fit for our team. 
+We will review your application in more detail and reach out to you soon regarding the next steps in the hiring process.</p>
+
+<p>Thank you for your interest in joining us.</p>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "emails/base.html" %}
+
+{% block title_section %}
+<div class="title-section" style="background: linear-gradient(135deg, #3fb950, #2ea043);">
+    <h1>Welcome to the Team!</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>Dear {{ candidate.full_name }},</p>
+
+<p>Congratulations! We are thrilled to offer you the position of {{ job.title if job else 'the position' }} at {{ company_name }}.</p>
+
+<p>Here are your joining details:</p>
+<ul>
+    <li><strong>Joining Date:</strong> {{ joining_date }}</li>
+    <li><strong>Reporting Time:</strong> {{ reporting_time }}</li>
+    <li><strong>Office Address:</strong> {{ office_address }}</li>
+    <li><strong>HR Contact:</strong> {{ hr_contact }}</li>
+</ul>
+
+<p>We are very excited to welcome you to the team!</p>
+
+<p>Best Regards</p>
+
+<p>{{ company_name }}</p>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}{{ page_title }} — {{ app_name }}{% endblock %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block dashboard_content %}
+<div class="coming-soon">
+    <div class="coming-soon-icon">
+        <i class="bi {{ page_icon }}"></i>
+    </div>
+    <h2>{{ page_title }}</h2>
+    <p>{{ page_description }}</p>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">
+        <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+    </a>
+</div>
+{% endblock %}

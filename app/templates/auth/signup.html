@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up — {{ app_name }}{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/auth.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+<div class="auth-page">
+    <div class="auth-panel auth-panel-brand d-none d-lg-flex">
+        <div class="auth-brand-content">
+            <div class="auth-logo">
+                <i class="bi bi-person-badge-fill"></i>
+                <span>{{ app_name }}</span>
+            </div>
+            <h1>Screen smarter.<br>Hire faster.</h1>
+            <p class="auth-tagline">
+                AI-powered resume screening built for modern HR teams.
+                Upload, score, rank, and shortlist candidates in one place.
+            </p>
+            <ul class="auth-features">
+                <li><i class="bi bi-check-circle-fill"></i> ATS score calculation</li>
+                <li><i class="bi bi-check-circle-fill"></i> Automatic skill extraction</li>
+                <li><i class="bi bi-check-circle-fill"></i> Candidate ranking & analytics</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="auth-panel auth-panel-form">
+        {% include "partials/_flash.html" %}
+
+        <div class="auth-form-wrapper">
+            <div class="auth-mobile-logo d-lg-none">
+                <i class="bi bi-person-badge-fill"></i>
+                <span>{{ app_name }}</span>
+            </div>
+
+            <div class="auth-card">
+                <h2>Sign up</h2>
+                <p class="auth-subtitle">Create your HR screening account</p>
+
+                <form method="POST" action="{{ url_for('auth.signup') }}" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.full_name.label(class="form-label") }}
+                        {{ form.full_name(class="form-control auth-input" + (" is-invalid" if form.full_name.errors else "")) }}
+                        {% for error in form.full_name.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control auth-input" + (" is-invalid" if form.email.errors else "")) }}
+                        {% for error in form.email.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label") }}
+                        {{ form.password(class="form-control auth-input" + (" is-invalid" if form.password.errors else "")) }}
+                        {% for error in form.password.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-4">
+                        {{ form.confirm_password.label(class="form-label") }}
+                        {{ form.confirm_password(class="form-control auth-input" + (" is-invalid" if form.confirm_password.errors else "")) }}
+                        {% for error in form.confirm_password.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    {{ form.submit(class="btn btn-primary w-100 auth-submit") }}
+                </form>
+
+                <div class="text-center mt-4">
+                    <p class="text-muted">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in here</a>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

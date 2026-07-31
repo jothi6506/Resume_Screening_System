@@ -1,0 +1,946 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}Jobs — {{ app_name }}{% endblock %}
+{% block page_title %}Job Postings{% endblock %}
+{% block page_subtitle %}Manage all open positions and recruitment campaigns{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+/* ── ATS Jobs Page ─────────────────────────────────────── */
+.jobs-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+.jobs-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    flex: 1;
+}
+.jobs-search-wrap {
+    position: relative;
+    width: 240px;
+}
+.jobs-search-wrap i {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--rs-text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+.jobs-search-wrap input {
+    background: var(--rs-surface);
+    border: 1px solid var(--rs-border);
+    color: var(--rs-text);
+    padding-left: 2.2rem;
+    padding-right: 0.75rem;
+    height: 38px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.jobs-search-wrap input:focus {
+    border-color: var(--rs-info);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.12);
+}
+.jobs-search-wrap input::placeholder { color: var(--rs-text-muted); }
+
+/* ATS Card Grid */
+.ats-jobs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1.1rem;
+}
+.ats-job-card {
+    background: var(--rs-surface);
+    border: 1px solid var(--rs-border);
+    border-radius: 14px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+}
+.ats-job-card:hover {
+    border-color: rgba(88,166,255,0.45);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 28px rgba(0,0,0,0.25);
+}
+.ats-job-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1.15rem 1.15rem 0;
+    gap: 0.75rem;
+}
+.ats-job-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(88,166,255,0.14);
+    color: var(--rs-info);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.ats-job-title-wrap {
+    flex: 1;
+    min-width: 0;
+}
+.ats-job-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--rs-text);
+    margin: 0 0 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ats-job-dept {
+    font-size: 0.78rem;
+    color: var(--rs-text-muted);
+}
+/* Three-dot menu */
+.ats-job-menu-btn {
+    background: transparent;
+    border: none;
+    color: var(--rs-text-muted);
+    font-size: 1.1rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+.ats-job-menu-btn:hover {
+    background: var(--rs-surface-hover);
+    color: var(--rs-text);
+}
+.dropdown-menu {
+    background: var(--rs-surface);
+    border: 1px solid var(--rs-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    padding: 0.35rem;
+    min-width: 160px;
+}
+.dropdown-item {
+    color: var(--rs-text);
+    border-radius: 7px;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    transition: background 0.12s;
+}
+.dropdown-item:hover { background: var(--rs-surface-hover); color: var(--rs-text); }
+.dropdown-item.text-danger { color: var(--rs-danger) !important; }
+.dropdown-item.text-danger:hover { background: rgba(248,81,73,0.1); }
+.dropdown-divider { border-color: var(--rs-border); margin: 0.3rem 0; }
+
+/* Card body */
+.ats-job-card-body {
+    padding: 0.85rem 1.15rem 0;
+    flex: 1;
+}
+.ats-job-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    font-size: 0.78rem;
+    color: var(--rs-text-muted);
+    margin-bottom: 0.85rem;
+}
+.ats-job-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.ats-job-meta i { font-size: 0.82rem; }
+.ats-job-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.85rem;
+    min-height: 28px;
+}
+.ats-skill-chip {
+    background: rgba(88,166,255,0.1);
+    color: var(--rs-info);
+    border: 1px solid rgba(88,166,255,0.2);
+    border-radius: 5px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.ats-skill-chip.more {
+    background: rgba(139,148,158,0.12);
+    color: var(--rs-text-muted);
+    border-color: var(--rs-border);
+}
+/* Card footer */
+.ats-job-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.15rem;
+    border-top: 1px solid var(--rs-border);
+    margin-top: 0.5rem;
+    gap: 0.5rem;
+}
+.ats-job-applicants {
+    font-size: 0.78rem;
+    color: var(--rs-success);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.ats-job-date {
+    font-size: 0.72rem;
+    color: var(--rs-text-muted);
+}
+
+/* ── Modals ───────────────────────────── */
+.rs-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 1050;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+    overflow-y: auto;
+}
+.rs-modal-backdrop.show { display: flex; }
+.rs-modal {
+    background: var(--rs-surface);
+    border: 1px solid var(--rs-border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 680px;
+    margin: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: modalIn 0.2s ease;
+}
+@keyframes modalIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.rs-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--rs-border);
+}
+.rs-modal-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--rs-text);
+    margin: 0;
+}
+.rs-modal-close {
+    background: none;
+    border: none;
+    color: var(--rs-text-muted);
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 6px;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+.rs-modal-close:hover { color: var(--rs-danger); background: rgba(248,81,73,0.1); }
+.rs-modal-body { padding: 1.5rem; }
+.rs-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--rs-border);
+}
+
+/* Form inside modal */
+.rs-modal .form-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--rs-text-muted);
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.rs-modal .form-control,
+.rs-modal .form-select {
+    background: var(--rs-bg);
+    border: 1px solid var(--rs-border);
+    color: var(--rs-text);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    padding: 0.55rem 0.85rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.rs-modal .form-control:focus,
+.rs-modal .form-select:focus {
+    background: var(--rs-bg);
+    border-color: var(--rs-info);
+    color: var(--rs-text);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.12);
+}
+.rs-modal .form-control::placeholder { color: var(--rs-text-muted); }
+.rs-modal .form-select option { background: var(--rs-surface); color: var(--rs-text); }
+.rs-modal-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--rs-text-muted);
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--rs-border);
+}
+.modal-error-banner {
+    background: rgba(248,81,73,0.1);
+    border: 1px solid rgba(248,81,73,0.3);
+    color: var(--rs-danger);
+    border-radius: 8px;
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    display: none;
+}
+
+/* View detail modal */
+.job-detail-row {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--rs-border);
+    font-size: 0.88rem;
+    align-items: baseline;
+}
+.job-detail-row:last-child { border-bottom: none; }
+.job-detail-label {
+    min-width: 130px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--rs-text-muted);
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+}
+.job-detail-value { color: var(--rs-text); flex: 1; }
+
+/* Toast */
+.rs-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--rs-surface);
+    border: 1px solid var(--rs-border);
+    border-radius: 10px;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.88rem;
+    color: var(--rs-text);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    gap: 0.65rem;
+    max-width: 340px;
+    animation: toastIn 0.2s ease;
+}
+.rs-toast.show { display: flex; }
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.rs-toast.success { border-color: rgba(63,185,80,0.4); }
+.rs-toast.danger  { border-color: rgba(248,81,73,0.4); }
+.rs-toast i.success { color: var(--rs-success); }
+.rs-toast i.danger  { color: var(--rs-danger); }
+
+/* Empty state */
+.ats-empty { text-align: center; padding: 3rem 1rem; color: var(--rs-text-muted); }
+.ats-empty i { font-size: 3rem; opacity: 0.35; display: block; margin-bottom: 1rem; }
+.ats-empty p { margin-bottom: 1rem; }
+
+@media (max-width: 768px) {
+    .ats-jobs-grid { grid-template-columns: 1fr; }
+    .jobs-search-wrap { width: 100%; }
+}
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<!-- Toolbar -->
+<div class="jobs-toolbar">
+    <div class="jobs-filter-group" id="jobFilters">
+        {% set statuses = [('all','All'), ('open','Active'), ('draft','Draft'), ('closed','Closed'), ('archived','Archived')] %}
+        {% for val, label in statuses %}
+        <button type="button" class="filter-pill {{ 'active' if status_filter == val }}"
+                data-filter="{{ val }}" style="border:none; cursor:pointer;">
+            {{ label }}
+            <span class="filter-count">{{ status_counts.get(val, 0) }}</span>
+        </button>
+        {% endfor %}
+    </div>
+    <div class="jobs-search-wrap">
+        <i class="bi bi-search"></i>
+        <input type="search" id="jobSearchInput" placeholder="Search jobs…">
+    </div>
+    <a href="{{ url_for('main.job_new') }}" class="btn btn-primary btn-sm" style="white-space:nowrap;">
+        <i class="bi bi-plus-lg me-1"></i>New Job
+    </a>
+</div>
+
+<!-- Cards Grid -->
+{% if jobs %}
+<div class="ats-jobs-grid" id="jobsGrid">
+    {% for job in jobs %}
+    <div class="ats-job-card"
+         data-status="{{ job.status }}"
+         data-title="{{ job.title | lower }}"
+         data-dept="{{ (job.department or '') | lower }}"
+         data-loc="{{ (job.location or '') | lower }}"
+         data-job-id="{{ job.id }}"
+         onclick="openViewModal({{ job.id }})">
+
+        <div class="ats-job-card-top">
+            <div class="ats-job-icon"><i class="bi bi-briefcase-fill"></i></div>
+            <div class="ats-job-title-wrap">
+                <h3 class="ats-job-title">{{ job.title }}</h3>
+                <span class="ats-job-dept">
+                    {% if job.department %}<i class="bi bi-building me-1"></i>{{ job.department }}{% endif %}
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="status-badge status-{{ job.status }}">{{ job.status_label }}</span>
+                <div class="dropdown" onclick="event.stopPropagation();">
+                    <button class="ats-job-menu-btn" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><button class="dropdown-item" onclick="openViewModal({{ job.id }})">
+                            <i class="bi bi-eye"></i> View Details</button></li>
+                        <li><button class="dropdown-item" onclick="openEditModal({{ job.id }})">
+                            <i class="bi bi-pencil"></i> Edit</button></li>
+                        <li><button class="dropdown-item job-action-btn" data-action="duplicate" data-job-id="{{ job.id }}">
+                            <i class="bi bi-files"></i> Duplicate</button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item job-action-btn" data-action="close" data-job-id="{{ job.id }}">
+                            <i class="bi bi-lock"></i> Close Job</button></li>
+                        <li><button class="dropdown-item job-action-btn" data-action="archive" data-job-id="{{ job.id }}">
+                            <i class="bi bi-archive"></i> Archive</button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item text-danger job-action-btn" data-action="delete" data-job-id="{{ job.id }}">
+                            <i class="bi bi-trash"></i> Delete</button></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="ats-job-card-body">
+            <div class="ats-job-meta">
+                {% if job.location %}
+                <span><i class="bi bi-geo-alt"></i> {{ job.location }}</span>
+                {% endif %}
+                <span><i class="bi bi-clock"></i> {{ job.employment_type | capitalize }}</span>
+                {% if job.min_experience > 0 %}
+                <span><i class="bi bi-person-check"></i> {{ job.min_experience }}+ yrs</span>
+                {% endif %}
+                {% if job.min_qualification %}
+                <span><i class="bi bi-mortarboard"></i> {{ job.min_qualification }}</span>
+                {% endif %}
+            </div>
+            <div class="ats-job-skills">
+                {% set skill_names = job.required_skills | map(attribute='skill') | map(attribute='name') | list %}
+                {% for name in skill_names[:5] %}
+                <span class="ats-skill-chip">{{ name }}</span>
+                {% endfor %}
+                {% if skill_names | length > 5 %}
+                <span class="ats-skill-chip more">+{{ skill_names | length - 5 }} more</span>
+                {% endif %}
+                {% if not skill_names %}
+                <span class="text-muted" style="font-size:0.78rem;">No required skills listed</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="ats-job-card-footer">
+            <span class="ats-job-applicants">
+                <i class="bi bi-people-fill"></i>
+                {{ job.application_count }} applicant{{ 's' if job.application_count != 1 }}
+            </span>
+            {% if job.created_at %}
+            <span class="ats-job-date">{{ job.created_at.strftime('%b %d, %Y') }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<div id="noResultsMsg" style="display:none;" class="ats-empty">
+    <i class="bi bi-search"></i>
+    <p>No jobs match your search or filter.</p>
+</div>
+{% else %}
+<div class="ats-empty">
+    <i class="bi bi-briefcase"></i>
+    <p>No jobs posted yet.</p>
+    <a href="{{ url_for('main.job_new') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Create your first job
+    </a>
+</div>
+{% endif %}
+
+<!-- ──────────────── VIEW MODAL ──────────────── -->
+<div class="rs-modal-backdrop" id="viewModalBackdrop">
+    <div class="rs-modal" id="viewModal">
+        <div class="rs-modal-header">
+            <h4 class="rs-modal-title" id="viewModalTitle">Job Details</h4>
+            <button class="rs-modal-close" onclick="closeViewModal()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="rs-modal-body" id="viewModalBody">
+            <div class="text-center text-muted py-4">
+                <span class="spinner-border spinner-border-sm"></span> Loading…
+            </div>
+        </div>
+        <div class="rs-modal-footer">
+            <button class="btn btn-secondary btn-sm" onclick="closeViewModal()">Close</button>
+            <button class="btn btn-primary btn-sm" id="viewToEditBtn">
+                <i class="bi bi-pencil me-1"></i>Edit Job
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ──────────────── EDIT MODAL ──────────────── -->
+<div class="rs-modal-backdrop" id="editModalBackdrop">
+    <div class="rs-modal" id="editModal" style="max-width:720px;">
+        <div class="rs-modal-header">
+            <h4 class="rs-modal-title">Edit Job</h4>
+            <button class="rs-modal-close" onclick="closeEditModal()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="rs-modal-body">
+            <div class="modal-error-banner" id="editModalError"></div>
+
+            <div class="rs-modal-section-title">Basic Information</div>
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <label class="form-label">Job Title <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="em_title" placeholder="e.g. Senior Python Developer">
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label">Department</label>
+                    <input type="text" class="form-control" id="em_department" placeholder="e.g. Engineering">
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" id="em_location" placeholder="e.g. Remote / Chennai">
+                </div>
+            </div>
+
+            <div class="rs-modal-section-title">Settings & Criteria</div>
+            <div class="row g-3 mb-3">
+                <div class="col-sm-6">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="em_status">
+                        <option value="open">Active / Open</option>
+                        <option value="draft">Draft</option>
+                        <option value="closed">Closed</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label">Employment Type</label>
+                    <select class="form-select" id="em_employment_type">
+                        <option value="full-time">Full-Time</option>
+                        <option value="part-time">Part-Time</option>
+                        <option value="contract">Contract</option>
+                        <option value="internship">Internship</option>
+                        <option value="freelance">Freelance</option>
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label">Min. Experience (years)</label>
+                    <input type="number" class="form-control" id="em_min_experience" min="0" max="50" step="0.5" placeholder="0">
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label">Min. Qualification</label>
+                    <select class="form-select" id="em_min_qualification">
+                        <option value="">— Any —</option>
+                        <option value="10th">10th / SSLC</option>
+                        <option value="12th">12th / HSC</option>
+                        <option value="Diploma">Diploma</option>
+                        <option value="Bachelor's">Bachelor's Degree</option>
+                        <option value="Master's">Master's Degree</option>
+                        <option value="MBA">MBA</option>
+                        <option value="PhD">PhD / Doctorate</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="rs-modal-section-title">ATS Skills</div>
+            <div class="mb-3">
+                <label class="form-label">Required Skills (comma-separated)</label>
+                <input type="text" class="form-control" id="em_required_skills_text"
+                       placeholder="Python, Django, REST API, SQL …">
+            </div>
+
+            <div class="rs-modal-section-title">Description</div>
+            <div class="mb-3">
+                <label class="form-label">Job Description</label>
+                <textarea class="form-control" id="em_description" rows="4"
+                          placeholder="Describe the role, responsibilities, and team."></textarea>
+            </div>
+            <div class="mb-1">
+                <label class="form-label">Requirements</label>
+                <textarea class="form-control" id="em_requirements" rows="3"
+                          placeholder="Qualifications and experience required."></textarea>
+            </div>
+        </div>
+        <div class="rs-modal-footer">
+            <button class="btn btn-secondary btn-sm" onclick="closeEditModal()">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="saveJobBtn" onclick="saveJob()">
+                <i class="bi bi-floppy-fill me-1"></i>Save Job
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="rs-toast" id="rsToast">
+    <i class="bi" id="rsToastIcon"></i>
+    <span id="rsToastMsg"></span>
+</div>
+
+<script>
+(function() {
+    let _currentJobId = null;
+
+    // ─── Toast ───────────────────────────────────────────────
+    function showToast(msg, type) {
+        const t = document.getElementById('rsToast');
+        const ic = document.getElementById('rsToastIcon');
+        const m = document.getElementById('rsToastMsg');
+        t.className = 'rs-toast show ' + type;
+        ic.className = 'bi ' + (type === 'success' ? 'bi-check-circle-fill success' : 'bi-exclamation-circle-fill danger');
+        m.textContent = msg;
+        setTimeout(() => { t.className = 'rs-toast'; }, 4000);
+    }
+
+    // ─── Client-side Filter Pills ────────────────────────────
+    const filterBtns = document.querySelectorAll('#jobFilters .filter-pill');
+    const cards = document.querySelectorAll('#jobsGrid .ats-job-card');
+    const noResults = document.getElementById('noResultsMsg');
+    const searchInput = document.getElementById('jobSearchInput');
+
+    const urlParams = new URLSearchParams(window.location.search);
+    let activeFilter = urlParams.get('status') || 'all';
+    let searchTerm = '';
+
+    function applyFilters() {
+        let visible = 0;
+        cards.forEach(card => {
+            const status = card.dataset.status;
+            const title = card.dataset.title || '';
+            const dept = card.dataset.dept || '';
+            const loc = card.dataset.loc || '';
+            const q = searchTerm.toLowerCase();
+            const matchFilter = activeFilter === 'all' || status === activeFilter;
+            const matchSearch = !q || title.includes(q) || dept.includes(q) || loc.includes(q);
+            if (matchFilter && matchSearch) { card.style.display = ''; visible++; }
+            else { card.style.display = 'none'; }
+        });
+        if (noResults) noResults.style.display = visible === 0 && cards.length > 0 ? 'block' : 'none';
+        filterBtns.forEach(b => {
+            if (b.dataset.filter === activeFilter) b.classList.add('active');
+            else b.classList.remove('active');
+        });
+        const url = new URL(window.location);
+        if (activeFilter === 'all') url.searchParams.delete('status');
+        else url.searchParams.set('status', activeFilter);
+        window.history.replaceState({}, '', url);
+    }
+
+    applyFilters();
+
+    filterBtns.forEach(btn => btn.addEventListener('click', e => {
+        e.preventDefault();
+        activeFilter = btn.dataset.filter;
+        applyFilters();
+    }));
+
+    if (searchInput) {
+        let st;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(st);
+            st = setTimeout(() => { searchTerm = searchInput.value.trim(); applyFilters(); }, 220);
+        });
+    }
+
+    // ─── Job Actions (Fetch API) ─────────────────────────────
+    document.querySelectorAll('.job-action-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault(); e.stopPropagation();
+            const action = this.dataset.action;
+            const jobId = this.dataset.jobId;
+            if (action === 'delete' && !confirm('Delete this job and all its applications? This cannot be undone.')) return;
+            const origHtml = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            this.disabled = true;
+            fetch(`/api/jobs/${jobId}/${action}`, { 
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+            })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        if (action === 'delete') {
+                            const card = document.querySelector(`.ats-job-card[data-job-id="${jobId}"]`);
+                            if (card) card.remove();
+                            showToast(d.message, 'success');
+                        } else if (action === 'duplicate') {
+                            showToast(d.message + ' Redirecting to edit…', 'success');
+                            setTimeout(() => window.location.href = `/jobs/${d.new_job_id}/edit`, 800);
+                        } else {
+                            showToast(d.message, 'success');
+                            setTimeout(() => window.location.reload(), 800);
+                        }
+                    } else { showToast(d.message || 'Action failed.', 'danger'); this.innerHTML = origHtml; this.disabled = false; }
+                })
+                .catch(() => { showToast('Network error.', 'danger'); this.innerHTML = origHtml; this.disabled = false; });
+        });
+    });
+
+    // ─── View Modal ──────────────────────────────────────────
+    window.openViewModal = function(jobId) {
+        _currentJobId = jobId;
+        document.getElementById('viewModalBackdrop').classList.add('show');
+        document.getElementById('viewModalTitle').textContent = 'Job Details';
+        document.getElementById('viewModalBody').innerHTML =
+            '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm"></span> Loading…</div>';
+        document.getElementById('viewToEditBtn').onclick = () => { closeViewModal(); openEditModal(jobId); };
+        fetch(`/api/jobs/${jobId}`)
+            .then(r => r.json())
+            .then(j => {
+                document.getElementById('viewModalTitle').textContent = j.title;
+                const skillsHtml = j.skills.length
+                    ? j.skills.map(s => `<span class="ats-skill-chip">${s}</span>`).join(' ')
+                    : '<span class="text-muted">None</span>';
+                document.getElementById('viewModalBody').innerHTML = `
+                    <div class="job-detail-row">
+                        <span class="job-detail-label">Status</span>
+                        <span class="job-detail-value"><span class="status-badge status-${j.status}">${j.status_label}</span></span>
+                    </div>
+                    <div class="job-detail-row">
+                        <span class="job-detail-label">Department</span>
+                        <span class="job-detail-value">${j.department || '—'}</span>
+                    </div>
+                    <div class="job-detail-row">
+                        <span class="job-detail-label">Location</span>
+                        <span class="job-detail-value">${j.location || '—'}</span>
+                    </div>
+                    <div class="job-detail-row">
+                        <span class="job-detail-label">Employment</span>
+                        <span class="job-detail-value">${j.employment_type}</span>
+                    </div>
+                    <div class="job-detail-row">
+                        <span class="job-detail-label">Experience</span>
+                        <span class="job-detail-value">${j.min_experience > 0 ? j.min_experience + '+ years' : 'Any'}</span>
+                    </div>
+                    <div class="job-detail-row">
+                        <span class="job-detail-label">Qualification</span>
+                        <span class="job-detail-value">${j.min_qualification || 'Any'}</span>
+                    </div>
+                    <div class="job-detail-row">
+                        <span class="job-detail-label">Applicants</span>
+                        <span class="job-detail-value" style="color:var(--rs-success);font-weight:600;">${j.application_count}</span>
+                    </div>
+                    <div class="job-detail-row">
+                        <span class="job-detail-label">Required Skills</span>
+                        <span class="job-detail-value" style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.25rem;">${skillsHtml}</span>
+                    </div>
+                    ${j.description ? `<div class="job-detail-row" style="flex-direction:column;gap:0.4rem;">
+                        <span class="job-detail-label">Description</span>
+                        <span class="job-detail-value" style="white-space:pre-wrap;">${j.description}</span>
+                    </div>` : ''}
+                    ${j.requirements ? `<div class="job-detail-row" style="flex-direction:column;gap:0.4rem;">
+                        <span class="job-detail-label">Requirements</span>
+                        <span class="job-detail-value" style="white-space:pre-wrap;">${j.requirements}</span>
+                    </div>` : ''}
+                    <div class="job-detail-row">
+                        <span class="job-detail-label">Created</span>
+                        <span class="job-detail-value">${j.created_at}</span>
+                    </div>`;
+            })
+            .catch(() => { document.getElementById('viewModalBody').innerHTML = '<p class="text-danger">Failed to load job details.</p>'; });
+    };
+
+    window.closeViewModal = function() {
+        document.getElementById('viewModalBackdrop').classList.remove('show');
+    };
+
+    // Click outside to close
+    document.getElementById('viewModalBackdrop').addEventListener('click', e => {
+        if (e.target === document.getElementById('viewModalBackdrop')) closeViewModal();
+    });
+
+    // ─── Edit Modal ──────────────────────────────────────────
+    window.openEditModal = function(jobId) {
+        _currentJobId = jobId;
+        // Reset error
+        const errBanner = document.getElementById('editModalError');
+        errBanner.style.display = 'none';
+        errBanner.textContent = '';
+        // Show modal with loading
+        document.getElementById('editModalBackdrop').classList.add('show');
+        const saveBtn = document.getElementById('saveJobBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading…';
+
+        fetch(`/api/jobs/${jobId}`)
+            .then(r => r.json())
+            .then(j => {
+                document.getElementById('em_title').value = j.title;
+                document.getElementById('em_department').value = j.department;
+                document.getElementById('em_location').value = j.location;
+                document.getElementById('em_status').value = j.status;
+                document.getElementById('em_employment_type').value = j.employment_type;
+                document.getElementById('em_min_experience').value = j.min_experience;
+                document.getElementById('em_min_qualification').value = j.min_qualification;
+                document.getElementById('em_required_skills_text').value = j.required_skills_text;
+                document.getElementById('em_description').value = j.description;
+                document.getElementById('em_requirements').value = j.requirements;
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-floppy-fill me-1"></i>Save Job';
+            })
+            .catch(() => {
+                showToast('Failed to load job data.', 'danger');
+                closeEditModal();
+            });
+    };
+
+    window.closeEditModal = function() {
+        document.getElementById('editModalBackdrop').classList.remove('show');
+        _currentJobId = null;
+    };
+
+    document.getElementById('editModalBackdrop').addEventListener('click', e => {
+        if (e.target === document.getElementById('editModalBackdrop')) closeEditModal();
+    });
+
+    // ─── Save Job ────────────────────────────────────────────
+    window.saveJob = function() {
+        if (!_currentJobId) return;
+        const errBanner = document.getElementById('editModalError');
+        errBanner.style.display = 'none';
+
+        const title = document.getElementById('em_title').value.trim();
+        if (!title) {
+            errBanner.textContent = 'Job title is required.';
+            errBanner.style.display = 'block';
+            document.getElementById('em_title').focus();
+            return;
+        }
+
+        const payload = {
+            title,
+            department: document.getElementById('em_department').value.trim(),
+            location: document.getElementById('em_location').value.trim(),
+            status: document.getElementById('em_status').value,
+            employment_type: document.getElementById('em_employment_type').value,
+            min_experience: parseFloat(document.getElementById('em_min_experience').value || 0),
+            min_qualification: document.getElementById('em_min_qualification').value,
+            required_skills_text: document.getElementById('em_required_skills_text').value.trim(),
+            description: document.getElementById('em_description').value.trim(),
+            requirements: document.getElementById('em_requirements').value.trim(),
+        };
+
+        const saveBtn = document.getElementById('saveJobBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+
+        fetch(`/api/jobs/${_currentJobId}/update`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                closeEditModal();
+                showToast(d.message, 'success');
+                // Update the card in the DOM instantly
+                const card = document.querySelector(`.ats-job-card[data-job-id="${_currentJobId}"]`);
+                if (card && d.job) {
+                    const j = d.job;
+                    const titleEl = card.querySelector('.ats-job-title');
+                    const deptEl  = card.querySelector('.ats-job-dept');
+                    const badgeEl = card.querySelector('.status-badge');
+                    const skillsEl= card.querySelector('.ats-job-skills');
+                    if (titleEl) titleEl.textContent = j.title;
+                    if (deptEl)  deptEl.innerHTML = j.department ? `<i class="bi bi-building me-1"></i>${j.department}` : '';
+                    if (badgeEl) { badgeEl.textContent = j.status_label; badgeEl.className = `status-badge status-${j.status}`; }
+                    card.dataset.status = j.status;
+                    card.dataset.title = j.title.toLowerCase();
+                    card.dataset.dept  = (j.department || '').toLowerCase();
+                    if (skillsEl) {
+                        const chips = j.skills.slice(0,5).map(s => `<span class="ats-skill-chip">${s}</span>`).join('');
+                        const more  = j.skills.length > 5 ? `<span class="ats-skill-chip more">+${j.skills.length - 5} more</span>` : '';
+                        skillsEl.innerHTML = chips + more || '<span class="text-muted" style="font-size:.78rem;">No required skills listed</span>';
+                    }
+                }
+                applyFilters(); // Re-apply current filter
+            } else {
+                const msg = d.error || d.message || 'Failed to save job.';
+                errBanner.textContent = msg;
+                errBanner.style.display = 'block';
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-floppy-fill me-1"></i>Save Job';
+            }
+        })
+        .catch(() => {
+            errBanner.textContent = 'Network error. Please try again.';
+            errBanner.style.display = 'block';
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-floppy-fill me-1"></i>Save Job';
+        });
+    };
+
+    // Allow Esc to close modals
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { closeViewModal(); closeEditModal(); }
+    });
+})();
+</script>
+{% endblock %}

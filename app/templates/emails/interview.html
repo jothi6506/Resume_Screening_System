@@ -1,0 +1,37 @@
+{% extends "emails/base.html" %}
+
+{% block title_section %}
+<div class="title-section" style="background: linear-gradient(135deg, #4361ee, #3a0ca3);">
+    <h1>Interview Invitation</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>Dear {{ candidate.full_name }},</p>
+
+<p>Congratulations! You have been shortlisted for an interview for the position of {{ job.title if job else 'the position' }}.</p>
+
+<p>Here are your interview details:</p>
+<ul>
+    <li><strong>Date:</strong> {{ interview_date }}</li>
+    <li><strong>Time:</strong> {{ interview_time }}</li>
+    <li><strong>Mode:</strong> {{ interview_mode }}</li>
+    {% if interview_mode == 'Online' and meeting_link %}
+    <li><strong>Meeting Link:</strong> <a href="{{ meeting_link }}">{{ meeting_link }}</a></li>
+    {% endif %}
+    {% if interview_mode == 'In-Person' and venue %}
+    <li><strong>Venue:</strong> {{ venue }}</li>
+    {% endif %}
+    {% if interviewer_name %}
+    <li><strong>Interviewer:</strong> {{ interviewer_name }}</li>
+    {% endif %}
+</ul>
+
+{% if notes %}
+<p><strong>Additional Notes:</strong><br/>{{ notes }}</p>
+{% endif %}
+
+<p>Best Regards</p>
+
+<p>{{ company_name }}</p>
+{% endblock %}

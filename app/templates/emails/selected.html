@@ -1,0 +1,21 @@
+{% extends "emails/base.html" %}
+
+{% block title_section %}
+<div class="title-section" style="background: linear-gradient(135deg, #3fb950, #2ea043);">
+    <h1>🎉 Congratulations! You Have Been Selected</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>Dear {{ candidate.full_name }},</p>
+
+<p>Congratulations!</p>
+
+<p>We are pleased to inform you that you have been selected for the next stage of our recruitment process for the position of {{ job.title if job else 'the position' }}.</p>
+
+<p>Our HR team will contact you shortly.</p>
+
+<p>Best Regards</p>
+
+<p>{{ company_name }}</p>
+{% endblock %}

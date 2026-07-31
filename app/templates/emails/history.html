@@ -1,0 +1,82 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}Email History — {{ app_name }}{% endblock %}
+
+{% block page_title %}Email History{% endblock %}
+{% block page_subtitle %}View and manage sent notifications{% endblock %}
+
+{% block dashboard_content %}
+<div class="panel">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Sent At</th>
+                    <th>Candidate</th>
+                    <th>Email Address</th>
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for email in emails %}
+                <tr>
+                    <td>{{ email.sent_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ email.candidate_name }}</td>
+                    <td>{{ email.email_address }}</td>
+                    <td>{{ email.subject }}</td>
+                    <td>
+                        {% if email.status == 'Sent' %}
+                        <span class="badge" style="background-color: var(--rs-success); color: white;">Sent</span>
+                        {% else %}
+                        <span class="badge" style="background-color: var(--rs-danger); color: white;">Failed</span>
+                        {% if email.error_message %}
+                        <small class="d-block text-muted mt-1" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ email.error_message }}">{{ email.error_message }}</small>
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="viewEmail({{ email.id }})">View</button>
+                        {% if email.status != 'Sent' %}
+                        <form method="POST" action="{{ url_for('main.retry_email_route', id=email.id) }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-primary">Retry</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">No emails have been sent yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Email View Modal -->
+<div class="modal" id="emailModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div class="modal-content" style="background:white; width:90%; max-width:700px; margin:50px auto; border-radius:8px; display:flex; flex-direction:column; max-height:80vh;">
+        <div style="padding:15px 20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0;">Email Content</h3>
+            <button onclick="document.getElementById('emailModal').style.display='none'" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+        </div>
+        <div style="padding:20px; overflow-y:auto;" id="emailModalBody">
+            <!-- Content loaded via JS -->
+        </div>
+    </div>
+</div>
+
+<script>
+function viewEmail(id) {
+    fetch(`/emails/${id}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('emailModalBody').innerHTML = data.body;
+            document.getElementById('emailModal').style.display = 'block';
+        });
+}
+</script>
+{% endblock %}
