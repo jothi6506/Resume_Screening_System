@@ -25,6 +25,7 @@ pytesseract
 
 # Cloud Deployment & WSGI
 gunicorn
+waitress
 whitenoise
 
 # Cloud Storage
