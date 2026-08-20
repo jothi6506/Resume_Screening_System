@@ -576,12 +576,12 @@ def _validate_projects_achievements(candidate: Candidate, is_fresher: bool = Fal
     project_count = len(re.split(r"[,\n•-]", projects_text))
     
     if is_fresher:
-        # For freshers, allow more projects (academic projects, assignments, etc.)
-        if project_count > 20:  # More than 20 projects for a fresher is unrealistic
+        # For freshers, allow academic projects, assignments, and bulleted lists
+        if project_count > 80:  # Allow bullet points and academic projects
             return _validation_result(key, weight, False, "Unrealistic project count", evidence=f"{project_count} projects", rule_name=rule_name)
     else:
         # For experienced candidates, check against years of experience
-        if project_count > years * 10:  # More than 10 projects per year of experience
+        if project_count > years * 15:  # More than 15 projects per year of experience
             return _validation_result(key, weight, False, "Unrealistic project count", evidence=f"{project_count} projects for {years}y", rule_name=rule_name)
     
     return _validation_result(key, weight, True, "Projects and achievements appear realistic", evidence="Realistic", rule_name=rule_name)
@@ -673,14 +673,17 @@ def _detect_ai_generated_content(text: str) -> dict:
         if len(set(lengths)) < 3:  # Very low variance
             return _validation_result(key, weight, False, "Unnatural sentence structure", evidence="Low length variance", rule_name=rule_name)
     
-    # Check for repetitive phrases
-    words = text.lower().split()
+    # Check for repetitive phrases (excluding formatting symbols like pipes/bullets)
+    clean_text = re.sub(r"[|•\-_:\t]+", " ", text.lower())
+    words = clean_text.split()
     repeated_phrases = []
     for i in range(len(words) - 3):
         phrase = " ".join(words[i:i+4])
-        count = text.lower().count(phrase)
-        if count > 2:
-            repeated_phrases.append(phrase)
+        # Only check meaningful word phrases (not single character symbols)
+        if len(phrase.strip()) > 15:
+            count = clean_text.count(phrase)
+            if count > 4:  # Allow standard resume header repeats
+                repeated_phrases.append(phrase)
     
     if repeated_phrases:
         return _validation_result(key, weight, False, "Repetitive content detected", evidence=repeated_phrases[0], rule_name=rule_name)
