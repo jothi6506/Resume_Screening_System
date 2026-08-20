@@ -1,5 +1,8 @@
 import os
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Config:
@@ -34,22 +37,52 @@ class Config:
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "")
 
 
+def _fix_db_url(url):
+    db_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "instance"))
+    os.makedirs(db_dir, exist_ok=True)
+    sqlite_path = os.path.join(db_dir, "app.db").replace("\\", "/")
+    fallback_uri = f"sqlite:///{sqlite_path}"
+
+    if not url:
+        return fallback_uri
+    if url.startswith("mysql://"):
+        url = url.replace("mysql://", "mysql+pymysql://", 1)
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+psycopg2://", 1)
+
+    if "mysql" in url and ("localhost" in url or "127.0.0.1" in url):
+        try:
+            import socket
+            s = socket.create_connection(("127.0.0.1", 3306), timeout=1)
+            s.close()
+        except Exception:
+            return fallback_uri
+
+    return url
+
+
+
+
+
+
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL",
-        "mysql+pymysql://root:Root%40123@localhost:3306/resume_screening",
+    SQLALCHEMY_DATABASE_URI = _fix_db_url(
+        os.environ.get(
+            "DATABASE_URL",
+            "mysql+pymysql://root:Root%40123@localhost:3306/resume_screening",
+        )
     )
 
 
 class ProductionConfig(Config):
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
+    SQLALCHEMY_DATABASE_URI = _fix_db_url(os.environ.get("DATABASE_URL"))
 
     @classmethod
     def init_app(cls, app):
         if not cls.SQLALCHEMY_DATABASE_URI:
-            raise ValueError("DATABASE_URL must be set in production")
+            raise ValueError("DATABASE_URL must be set in production environment")
 
 
 class TestingConfig(Config):
@@ -64,3 +97,4 @@ config = {
     "testing": TestingConfig,
     "default": DevelopmentConfig,
 }
+

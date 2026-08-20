@@ -27,7 +27,16 @@ def create_app(config_name=None):
     _register_error_handlers(app)
     _register_cli(app)
 
+    # Enable WhiteNoise for production static file serving
+    try:
+        from whitenoise import WhiteNoise
+        static_folder = os.path.join(app.root_path, "static")
+        app.wsgi_app = WhiteNoise(app.wsgi_app, root=static_folder, prefix="static/")
+    except Exception:
+        pass
+
     return app
+
 
 
 def _register_jinja_filters(app):

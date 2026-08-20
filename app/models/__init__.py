@@ -8,6 +8,7 @@ from app.models.skill import CandidateSkill, JobSkill, Skill
 from app.models.user import User
 from app.models.email import EmailHistory, EmailSettings
 from app.models.activity import ActivityLog
+from app.models.interview_evaluation import InterviewEvaluation
 
 __all__ = [
     "User",
@@ -21,4 +22,5 @@ __all__ = [
     "EmailHistory",
     "EmailSettings",
     "ActivityLog",
+    "InterviewEvaluation",
 ]

@@ -64,12 +64,26 @@
 </div>
 {% endif %}
 
+<div class="panel mb-3" style="border-left: 4px solid var(--rs-accent, #388bfd);">
+    <div class="panel-header">
+        <h3 class="panel-title"><i class="bi bi-file-earmark-arrow-up me-1"></i> Upload Job Description Document</h3>
+    </div>
+    <div class="panel-body">
+        <p class="text-muted small mb-2">Upload a Job Description in <strong>PDF, DOCX, or TXT</strong> format to automatically extract role title, required skills, experience, qualifications, and requirements into the form below.</p>
+        <div class="d-flex align-items-center gap-2">
+            <input type="file" id="jdFileInput" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt" onchange="uploadAndParseJD(this)">
+            <span id="jdParseSpinner" class="spinner-border spinner-border-sm text-primary d-none" role="status"></span>
+        </div>
+        <div id="jdParseStatus" class="form-text mt-1 text-success d-none"></div>
+    </div>
+</div>
+
 <div class="panel">
     <div class="panel-header">
         <h3 class="panel-title">{{ 'Edit Job Details' if job else 'Job Details' }}</h3>
     </div>
     <div class="panel-body">
-        <form method="POST" action="{{ url_for('main.job_edit', job_id=job.id) if job else url_for('main.job_new') }}" novalidate>
+        <form method="POST" id="jobDetailsForm" action="{{ url_for('main.job_edit', job_id=job.id) if job else url_for('main.job_new') }}" novalidate>
             {{ form.hidden_tag() }}
 
             <div class="row g-3">
@@ -168,3 +182,68 @@
     </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+function uploadAndParseJD(fileInput) {
+    if (!fileInput.files || !fileInput.files[0]) return;
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const spinner = document.getElementById('jdParseSpinner');
+    const statusDiv = document.getElementById('jdParseStatus');
+
+    spinner.classList.remove('d-none');
+    statusDiv.classList.add('d-none');
+    statusDiv.textContent = '';
+
+    fetch("{{ url_for('main.api_parse_job_description') }}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': "{{ csrf_token() }}"
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        spinner.classList.add('d-none');
+        if (data.success && data.parsed) {
+            const p = data.parsed;
+            if (p.title) document.querySelector('[name="title"]').value = p.title;
+            if (p.required_skills_text) document.querySelector('[name="required_skills_text"]').value = p.required_skills_text;
+            if (p.min_experience !== undefined) document.querySelector('[name="min_experience"]').value = p.min_experience;
+            if (p.min_qualification) {
+                const select = document.querySelector('[name="min_qualification"]');
+                if (select) {
+                    for (let opt of select.options) {
+                        if (opt.value.toLowerCase() === p.min_qualification.toLowerCase()) {
+                            select.value = opt.value;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (p.description) document.querySelector('[name="description"]').value = p.description;
+            if (p.requirements) document.querySelector('[name="requirements"]').value = p.requirements;
+
+            statusDiv.classList.remove('d-none', 'text-danger');
+            statusDiv.classList.add('text-success');
+            statusDiv.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Job Description parsed! Form fields auto-filled (you can still edit them manually).';
+        } else {
+            statusDiv.classList.remove('d-none', 'text-success');
+            statusDiv.classList.add('text-danger');
+            statusDiv.textContent = 'Error parsing file: ' + (data.error || 'Unknown error');
+        }
+    })
+    .catch(err => {
+        spinner.classList.add('d-none');
+        statusDiv.classList.remove('d-none', 'text-success');
+        statusDiv.classList.add('text-danger');
+        statusDiv.textContent = 'Failed to parse file: ' + err.message;
+    });
+}
+</script>
+{% endblock %}
+

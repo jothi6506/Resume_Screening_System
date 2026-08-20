@@ -56,14 +56,16 @@ def register_commands(app):
         """Seed default admin user, skills, and sample job."""
         db.create_all()
 
-        admin = User.query.filter_by(email=email).first()
-        if not admin:
-            admin = User(email=email, full_name=name, role="admin")
-            admin.set_password(password)
-            db.session.add(admin)
-            click.echo(f"Created admin user: {email}")
-        else:
-            click.echo(f"Admin user already exists: {email}")
+        for admin_email in [email, "admin@resume.com"]:
+            admin = User.query.filter_by(email=admin_email).first()
+            if not admin:
+                admin = User(email=admin_email, full_name=name, role="admin")
+                admin.set_password(password)
+                db.session.add(admin)
+                click.echo(f"Created admin user: {admin_email}")
+            else:
+                click.echo(f"Admin user already exists: {admin_email}")
+
 
         skill_map = {}
         for skill_name, category in DEFAULT_SKILLS:

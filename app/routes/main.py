@@ -124,15 +124,21 @@ def candidate_detail(candidate_id):
         scores = calculate_ats_score(candidate, app.job, candidate.primary_resume)
         predictions[app.id] = scores
 
-    # Build Resume Validation Report (format + section checks)
-    from app.services.resume_validator import build_validation_report
-    validation_report = build_validation_report(candidate)
+    # Check for possible duplicate candidate
+    from app.services.duplicate_detector import check_duplicate_candidate
+    primary_resume = candidate.primary_resume
+    duplicate_info = check_duplicate_candidate(
+        email=candidate.email,
+        phone=candidate.phone,
+        extracted_text=primary_resume.extracted_text if primary_resume else None,
+        candidate_id=candidate.id
+    )
 
     return render_template(
         "candidates/detail.html",
         candidate=candidate,
         predictions=predictions,
-        validation_report=validation_report,
+        duplicate_info=duplicate_info,
         active_nav="candidates",
     )
 
@@ -200,24 +206,16 @@ def send_custom_email(candidate_id):
 @main_bp.route("/candidates/<int:candidate_id>/delete", methods=["POST"])
 @login_required
 def delete_candidate(candidate_id):
-    """Delete a candidate and all associated data including the physical resume files."""
-    import os
-    from flask import current_app
+    """Delete a candidate and all associated data including resume files."""
+    from app.services.storage_service import get_storage_service
 
     candidate = db.get_or_404(Candidate, candidate_id)
     candidate_name = candidate.full_name
 
-    # Delete physical resume files from disk
-    upload_folder = os.path.join(
-        current_app.root_path, "..", current_app.config["UPLOAD_FOLDER"]
-    )
+    storage = get_storage_service()
     for resume in candidate.resumes:
-        file_path = os.path.join(os.path.abspath(upload_folder), resume.stored_filename)
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except OSError:
-                pass  # Non-fatal if file already missing
+        if resume.stored_filename:
+            storage.delete_file(resume.stored_filename)
 
     # SQLAlchemy cascade will remove: resumes, skills, applications
     db.session.delete(candidate)
@@ -418,20 +416,33 @@ def job_detail(job_id):
 
 
 def _attach_skills_to_job(job, skills_text: str):
-    """Parse a comma-separated skill string and attach them to a job."""
-    if not skills_text.strip():
+    """Parse a comma-separated skill string and attach them to a job safely."""
+    if not skills_text or not skills_text.strip():
         return
     skill_names = [s.strip() for s in skills_text.split(",") if s.strip()]
+    added_skill_ids = set()
+
     for name in skill_names:
-        skill = Skill.query.filter(Skill.name.ilike(name)).first()
+        if not name:
+            continue
+        skill = Skill.query.filter_by(name=name).first()
         if not skill:
-            skill = Skill(name=name.title(), category="technical")
-            db.session.add(skill)
-            db.session.flush()
-        # Avoid duplicates
-        exists = JobSkill.query.filter_by(job_id=job.id, skill_id=skill.id).first()
-        if not exists:
-            db.session.add(JobSkill(job_id=job.id, skill_id=skill.id, is_required=True, weight=1.0))
+            skill = Skill.query.filter(func.lower(Skill.name) == func.lower(name)).first()
+        if not skill:
+            try:
+                with db.session.begin_nested():
+                    skill = Skill(name=name, category="technical")
+                    db.session.add(skill)
+                    db.session.flush()
+            except Exception:
+                skill = Skill.query.filter(func.lower(Skill.name) == func.lower(name)).first()
+
+        if skill and skill.id not in added_skill_ids:
+            added_skill_ids.add(skill.id)
+            exists = JobSkill.query.filter_by(job_id=job.id, skill_id=skill.id).first()
+            if not exists:
+                db.session.add(JobSkill(job_id=job.id, skill_id=skill.id, is_required=True, weight=1.0))
+
 
 
 # ── Analytics ────────────────────────────────────────────────────────────────
@@ -931,4 +942,199 @@ def email_settings():
         form=form,
         active_nav="email_settings"
     )
+
+
+# ── New Feature API Routes ───────────────────────────────────────────────────
+
+@main_bp.route("/api/jobs/parse-jd", methods=["POST"])
+@login_required
+def api_parse_job_description():
+    """Parse uploaded Job Description file (PDF, DOCX, TXT) and return extracted fields."""
+    if "file" not in request.files:
+        return {"success": False, "error": "No file uploaded."}, 400
+
+    file = request.files["file"]
+    if not file or not file.filename:
+        return {"success": False, "error": "No file selected."}, 400
+
+    try:
+        from app.services.jd_parser import extract_jd_text, parse_job_description
+        raw_text = extract_jd_text(file)
+        parsed = parse_job_description(raw_text, original_filename=file.filename)
+        return {"success": True, "parsed": parsed}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}, 500
+
+
+
+
+
+@main_bp.route("/candidates/<int:candidate_id>/export-pdf")
+@login_required
+def export_candidate_pdf(candidate_id):
+    """Generate and return downloadable PDF report for candidate."""
+    from flask import send_file
+    candidate = db.get_or_404(Candidate, candidate_id)
+    app_id = request.args.get("app_id")
+    
+    from app.services.pdf_report_generator import generate_candidate_pdf_report
+    pdf_buffer = generate_candidate_pdf_report(candidate, app_id=app_id)
+    
+    clean_name = "".join(c for c in candidate.full_name if c.isalnum() or c in (" ", "_")).strip().replace(" ", "_")
+    filename = f"Candidate_Report_{clean_name}_{candidate.id}.pdf"
+    
+    return send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=filename
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# RECRUITMENT AI MODULE ROUTES
+# ══════════════════════════════════════════════════════════════════════════════
+
+@main_bp.route("/recruitment-ai")
+@login_required
+def recruitment_ai():
+    """Main dashboard page for Recruitment AI module."""
+    jobs = Job.query.order_by(Job.created_at.desc()).all()
+    selected_job_id = request.args.get("job_id", type=int)
+    if not selected_job_id and jobs:
+        selected_job_id = jobs[0].id
+
+    return render_template(
+        "recruitment_ai/index.html",
+        jobs=jobs,
+        selected_job_id=selected_job_id,
+        active_nav="recruitment_ai",
+    )
+
+
+@main_bp.route("/api/recruitment-ai/recommendations/<int:job_id>")
+@login_required
+def api_recruitment_recommendations(job_id):
+    """API returning ranked candidates for job with Rank badges & Rank #1 Why Recommended."""
+    from app.services.recruitment_ai_service import rank_candidates_for_job
+    data = rank_candidates_for_job(job_id)
+    return {"success": True, "data": data}
+
+
+@main_bp.route("/api/recruitment-ai/compare", methods=["POST"])
+@login_required
+def api_recruitment_compare():
+    """API returning candidate comparison matrix."""
+    payload = request.get_json(force=True, silent=True)
+    if not payload and request.data:
+        import json
+        try:
+            payload = json.loads(request.data.decode("utf-8"))
+        except Exception:
+            payload = {}
+    if not payload:
+        payload = {}
+
+    candidate_ids = payload.get("candidate_ids", [])
+    job_id = payload.get("job_id")
+
+    if not candidate_ids:
+        return {"success": False, "error": "No candidates selected for comparison."}, 400
+
+    from app.services.recruitment_ai_service import compare_candidates
+    data = compare_candidates(candidate_ids, job_id=job_id)
+    return {"success": True, "data": data}
+
+
+@main_bp.route("/api/recruitment-ai/interview-questions", methods=["GET", "POST"])
+@login_required
+def api_recruitment_questions():
+    """API to generate custom technical, HR, and scenario interview questions."""
+    payload = request.get_json(force=True, silent=True) or request.json or {}
+    candidate_id = request.args.get("candidate_id", type=int) or payload.get("candidate_id")
+    job_id = request.args.get("job_id", type=int) or payload.get("job_id")
+
+    if not candidate_id:
+        return {"success": False, "error": "Candidate ID is required."}, 400
+
+    candidate = db.get_or_404(Candidate, candidate_id)
+    job = db.session.get(Job, int(job_id)) if job_id else (candidate.applications[0].job if candidate.applications else None)
+
+    from app.services.recruitment_ai_service import generate_recruitment_questions
+    questions = generate_recruitment_questions(candidate, job)
+    return {"success": True, "questions": questions}
+
+
+@main_bp.route("/api/recruitment-ai/evaluate-interview", methods=["POST"])
+@login_required
+def api_recruitment_evaluate():
+    """API to save HR interview ratings, calculate score, and generate final recommendation."""
+    payload = request.get_json(force=True, silent=True)
+    if not payload and request.data:
+        import json
+        try:
+            payload = json.loads(request.data.decode("utf-8"))
+        except Exception:
+            payload = {}
+    if not payload:
+        payload = {}
+
+    candidate_id = payload.get("candidate_id")
+    job_id = payload.get("job_id")
+    ratings = payload.get("ratings", {})
+    comments = payload.get("comments", "")
+
+    if not candidate_id or not job_id:
+        return {"success": False, "error": "Candidate ID and Job ID are required."}, 400
+
+    from app.services.recruitment_ai_service import save_interview_evaluation
+    result = save_interview_evaluation(candidate_id, job_id, ratings, comments)
+    return {"success": True, "evaluation": result}
+
+
+@main_bp.route("/recruitment-ai/export-pdf/<int:candidate_id>/<int:job_id>")
+@login_required
+def export_recruitment_pdf(candidate_id, job_id):
+    """Export complete Recruitment AI PDF Report for candidate & job."""
+    from flask import send_file
+    from app.services.pdf_report_generator import generate_recruitment_pdf_report
+    
+    candidate = db.get_or_404(Candidate, candidate_id)
+    pdf_buffer = generate_recruitment_pdf_report(candidate_id, job_id)
+    
+    clean_name = "".join(c for c in candidate.full_name if c.isalnum() or c in (" ", "_")).strip().replace(" ", "_")
+    filename = f"Recruitment_Report_{clean_name}_{candidate_id}.pdf"
+    
+    return send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=filename
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SYSTEM & CLOUD STATUS MODULE ROUTES
+# ══════════════════════════════════════════════════════════════════════════════
+
+@main_bp.route("/system/status")
+@login_required
+def system_status_route():
+    from app.services.system_status_service import get_system_status
+    status_data = get_system_status()
+    return render_template(
+        "system/status.html",
+        status=status_data,
+        active_nav="system_status"
+    )
+
+
+@main_bp.route("/api/system/status")
+@login_required
+def api_system_status():
+    from app.services.system_status_service import get_system_status
+    return {"success": True, "data": get_system_status()}
+
+
+
 

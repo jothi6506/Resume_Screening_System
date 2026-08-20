@@ -9,6 +9,7 @@ from app.extensions import db
 from app.forms.auth import LoginForm, SignupForm
 from app.models import User
 
+
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 
@@ -18,44 +19,52 @@ def login():
         return redirect(url_for("main.dashboard"))
 
     form = LoginForm()
-    
-    # DEBUG: Print request and form data before validation
-    print("REQUEST METHOD:", request.method)
-    print("FORM VALIDATE:", form.validate_on_submit())
-    print("FORM ERRORS:", form.errors)
-    print("EMAIL:", form.email.data)
-    print("PASSWORD LENGTH:", len(form.password.data or ""))
-    print("REQUEST FORM:", request.form)
-    print("CSRF TOKEN:", request.form.get("csrf_token"))
-    
+
+    if request.method == "POST":
+        print("=" * 50)
+        print("LOGIN ATTEMPT")
+        print("FORM ERRORS:", form.errors)
+        print("EMAIL:", repr(form.email.data))
+        print("PASSWORD LENGTH:", len(form.password.data or ""))
+        print("CSRF PRESENT:", bool(request.form.get("csrf_token")))
+        print("=" * 50)
+
     if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data.strip().lower()).first()
-        
-        # DEBUG: Print user query results
-        print("USER FOUND:", user)
-        if user:
-            print("DB EMAIL:", user.email)
-            print("PASSWORD CHECK:", user.check_password(form.password.data))
-            print("IS ACTIVE:", user.is_active)
+        email = (form.email.data or "").strip().lower()
+        password = form.password.data or ""
 
-        if user is None or not user.check_password(form.password.data):
-            flash("Invalid email or password.", "danger")
-            return render_template("auth/login.html", form=form), 401
+        try:
+            user = User.query.filter_by(email=email).first()
 
-        if not user.is_active:
-            flash("This account has been deactivated. Contact your administrator.", "warning")
-            return render_template("auth/login.html", form=form), 403
+            if user is None or not user.check_password(password):
+                flash("Invalid email or password.", "danger")
+                return render_template("auth/login.html", form=form), 401
 
-        user.last_login = datetime.now(timezone.utc)
-        db.session.commit()
+            if not user.is_active:
+                flash(
+                    "This account has been deactivated. Contact your administrator.",
+                    "warning",
+                )
+                return render_template("auth/login.html", form=form), 403
 
-        login_user(user, remember=form.remember_me.data)
-        flash(f"Welcome back, {user.full_name}!", "success")
+            user.last_login = datetime.now(timezone.utc)
+            db.session.commit()
 
-        next_page = request.args.get("next")
-        if next_page and next_page.startswith("/"):
-            return redirect(next_page)
-        return redirect(url_for("main.dashboard"))
+            login_user(user, remember=form.remember_me.data)
+
+            flash(f"Welcome back, {user.full_name}!", "success")
+
+            next_page = request.args.get("next")
+
+            if next_page and next_page.startswith("/"):
+                return redirect(next_page)
+
+            return redirect(url_for("main.dashboard"))
+
+        except Exception as exc:
+            db.session.rollback()
+            flash("A database error occurred during login. Please try again.", "danger")
+            return render_template("auth/login.html", form=form), 500
 
     return render_template("auth/login.html", form=form)
 
@@ -66,30 +75,45 @@ def signup():
         return redirect(url_for("main.dashboard"))
 
     form = SignupForm()
+
     if form.validate_on_submit():
-        email = form.email.data.strip().lower()
-        if User.query.filter_by(email=email).first():
-            flash("An account with that email already exists.", "danger")
-            return render_template("auth/signup.html", form=form), 400
+        email = (form.email.data or "").strip().lower()
 
-        user = User(
-            email=email,
-            full_name=form.full_name.data.strip()
-        )
-        user.set_password(form.password.data)
-        db.session.add(user)
-        db.session.commit()
+        try:
+            existing_user = User.query.filter_by(email=email).first()
 
-        flash("Account created successfully. Please log in.", "success")
-        return redirect(url_for("auth.login"))
+            if existing_user:
+                flash("An account with that email already exists.", "danger")
+                return render_template("auth/signup.html", form=form), 400
+
+            user = User(
+                email=email,
+                full_name=(form.full_name.data or "").strip(),
+            )
+
+            user.set_password(form.password.data)
+
+            db.session.add(user)
+            db.session.commit()
+
+            flash("Account created successfully. Please log in.", "success")
+
+            return redirect(url_for("auth.login"))
+
+        except Exception as exc:
+            db.session.rollback()
+            flash("A database error occurred during signup. Please try again.", "danger")
+            return render_template("auth/signup.html", form=form), 500
 
     return render_template("auth/signup.html", form=form)
+
+
 
 @auth_bp.route("/logout")
 @login_required
 def logout():
     logout_user()
+
     flash("You have been signed out.", "success")
+
     return redirect(url_for("auth.login"))
-
-

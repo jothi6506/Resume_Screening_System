@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: cloud-resume-screening-system
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app
+    envVars:
+      - key: FLASK_APP
+        value: run.py
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: STORAGE_TYPE
+        value: local

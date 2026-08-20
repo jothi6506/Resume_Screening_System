@@ -23,6 +23,15 @@ docx2txt
 Pillow
 pytesseract
 
+# Cloud Deployment & WSGI
+gunicorn
+whitenoise
+
+# Cloud Storage
+boto3
+cloudinary
+
 # Utilities
 python-dateutil==2.9.0.post0
 phonenumbers
+

@@ -133,13 +133,18 @@ def process_resume_file(file_storage, job_id=None):
             "error": f"File type not allowed. Accepted: {', '.join(sorted(allowed))}",
         }
 
+    from app.services.storage_service import get_storage_service
+    storage = get_storage_service()
+
     file_type = _get_file_type(original_name)
     stored_name = f"{uuid.uuid4().hex}.{file_type}"
-    upload_path = os.path.join(_upload_dir(), stored_name)
 
     try:
-        file_storage.save(upload_path)
-        file_size = os.path.getsize(upload_path)
+        saved_info = storage.save_file(file_storage, stored_name)
+        stored_path = saved_info["file_path"]
+        file_size = saved_info.get("file_size", 0)
+
+        local_extract_path = storage.get_temp_local_path(stored_name) or stored_path
 
         resume_record = None
         parse_status = "processing"
@@ -147,7 +152,7 @@ def process_resume_file(file_storage, job_id=None):
         parse_error = None
 
         try:
-            extracted_text = extract_text(upload_path, file_type)
+            extracted_text = extract_text(local_extract_path, file_type)
             fields = extract_candidate_fields(extracted_text, original_name)
             candidate = _find_or_create_candidate(fields)
             parse_status = "completed"
@@ -156,7 +161,7 @@ def process_resume_file(file_storage, job_id=None):
                 candidate_id=candidate.id,
                 original_filename=original_name,
                 stored_filename=stored_name,
-                file_path=upload_path,
+                file_path=stored_path,
                 file_size=file_size,
                 file_type=file_type,
                 extracted_text=extracted_text,
@@ -197,6 +202,15 @@ def process_resume_file(file_storage, job_id=None):
             resume_record.authenticity_score = auth_result["score"]
             resume_record.authenticity_report = auth_result["report_json"]
             resume_record.is_suspicious = auth_result["is_suspicious"]
+
+            # ── Duplicate resume check ──────────────────────────────────────
+            from app.services.duplicate_detector import check_duplicate_candidate
+            dup_result = check_duplicate_candidate(
+                email=candidate.email,
+                phone=candidate.phone,
+                extracted_text=extracted_text,
+                candidate_id=candidate.id
+            )
             db.session.commit()
 
             return {
@@ -216,6 +230,8 @@ def process_resume_file(file_storage, job_id=None):
                 "authenticity_score": auth_result["score"],
                 "authenticity_status": auth_result["status"],
                 "risk_level": auth_result["risk_level"],
+                "is_duplicate": dup_result["is_duplicate"],
+                "duplicate_reasons": dup_result["reasons"],
             }
 
         except ResumeParserError as exc:
@@ -228,7 +244,7 @@ def process_resume_file(file_storage, job_id=None):
                 candidate_id=candidate.id,
                 original_filename=original_name,
                 stored_filename=stored_name,
-                file_path=upload_path,
+                file_path=stored_path,
                 file_size=file_size,
                 file_type=file_type,
                 extracted_text=None,
@@ -252,8 +268,7 @@ def process_resume_file(file_storage, job_id=None):
 
     except Exception as exc:
         db.session.rollback()
-        if os.path.exists(upload_path):
-            os.remove(upload_path)
+        storage.delete_file(stored_name)
         return {
             "success": False,
             "filename": original_name,

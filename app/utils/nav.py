@@ -38,9 +38,22 @@ NAV_ITEMS = [
         "endpoint": "main.email_history",
     },
     {
+        "id": "recruitment_ai",
+        "label": "Recruitment AI",
+        "icon": "bi-robot",
+        "endpoint": "main.recruitment_ai",
+    },
+    {
         "id": "email_settings",
         "label": "Email Settings",
         "icon": "bi-gear-fill",
         "endpoint": "main.email_settings",
     },
+    {
+        "id": "system_status",
+        "label": "System Status",
+        "icon": "bi-cloud-check-fill",
+        "endpoint": "main.system_status_route",
+    },
 ]
+

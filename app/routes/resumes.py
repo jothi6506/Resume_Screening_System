@@ -63,3 +63,66 @@ def upload():
         open_jobs=open_jobs,
         active_nav="upload",
     )
+
+
+@resumes_bp.route("/resumes/<int:resume_id>/download")
+@login_required
+def download_resume(resume_id):
+    import io
+    from flask import send_file, redirect, flash, url_for
+    from app.extensions import db
+    from app.models import Resume
+    from app.services.storage_service import get_storage_service
+
+    resume = db.get_or_404(Resume, resume_id)
+    storage = get_storage_service()
+
+    file_bytes = storage.get_file_bytes(resume.stored_filename)
+    if not file_bytes:
+        flash("Resume file could not be found in storage.", "danger")
+        return redirect(request.referrer or url_for("main.candidates"))
+
+    mime = "application/pdf" if resume.file_type == "pdf" else "application/octet-stream"
+    return send_file(
+        io.BytesIO(file_bytes),
+        mimetype=mime,
+        as_attachment=True,
+        download_name=resume.original_filename or f"resume_{resume.id}.pdf"
+    )
+
+
+@resumes_bp.route("/resumes/<int:resume_id>/view")
+@login_required
+def view_resume(resume_id):
+    import io
+    from flask import send_file, redirect, flash, url_for
+    from app.extensions import db
+    from app.models import Resume
+    from app.services.storage_service import get_storage_service
+
+    resume = db.get_or_404(Resume, resume_id)
+
+    if resume.file_path and (resume.file_path.startswith("http://") or resume.file_path.startswith("https://")):
+        return redirect(resume.file_path)
+
+    storage = get_storage_service()
+    file_bytes = storage.get_file_bytes(resume.stored_filename)
+    if not file_bytes:
+        flash("Resume file could not be found in storage.", "danger")
+        return redirect(request.referrer or url_for("main.candidates"))
+
+    mime_map = {
+        "pdf": "application/pdf",
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "doc": "application/msword"
+    }
+    mime = mime_map.get(resume.file_type.lower(), "application/octet-stream")
+    return send_file(
+        io.BytesIO(file_bytes),
+        mimetype=mime,
+        as_attachment=False
+    )
+
