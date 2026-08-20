@@ -52,6 +52,12 @@ def _init_extensions(app):
     login_manager.init_app(app)
     csrf.init_app(app)
 
+    with app.app_context():
+        try:
+            db.create_all()
+        except Exception as e:
+            app.logger.warning(f"Auto DB setup notice: {e}")
+
     from app.models import (  # noqa: F401 — register all models
         Application,
         Candidate,
