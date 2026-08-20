@@ -1,8 +1,8 @@
 services:
   - type: web
-    name: cloud-resume-screening-system
+    name: resume-screening-system
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && flask db upgrade && flask seed
     startCommand: gunicorn run:app
     envVars:
       - key: FLASK_APP
@@ -10,8 +10,9 @@ services:
       - key: FLASK_ENV
         value: production
       - key: SECRET_KEY
-        generateValue: true
+        value: production-secret-key-resume-screening-2026
       - key: DATABASE_URL
-        sync: false
+        value: mysql+pymysql://33AzvaX9rmmawum.root:7cbJrwDIjKnqXU7H@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/test?ssl=true&ssl_verify_cert=false
       - key: STORAGE_TYPE
         value: local
+
