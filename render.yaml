@@ -3,7 +3,7 @@ services:
     name: resume-screening-system
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: flask db upgrade && flask seed && gunicorn run:app
+    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT
     envVars:
       - key: FLASK_APP
         value: run.py
